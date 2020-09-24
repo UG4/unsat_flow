@@ -1,24 +1,22 @@
 # unsat_flow
 
-**UG4-App** implementing a density driven flow equation system
+**UG4-App** implementing an unsaturated density driven flow equation system
 
 ## Documentation
 The equations used are: </br>
-<img src="https://render.githubusercontent.com/render/math?math=\partial_t (\Phi \rho_w S_w) + \nabla \cdot [\rho_w \vec{v}_w] = \rho_w \Gamma_w"> </br>
+<img src="https://render.githubusercontent.com/render/math?math=\partial_t (\Phi \rho_w S_w) %2B \nabla \cdot [\rho_w \vec{v}_w] = \rho_w \Gamma_w"> </br>
 <sub>($\partial_t (\Phi \rho_w S_w) + \nabla \cdot [\rho_w \vec{v}_w] = \rho_w \Gamma_w$)</sub> </br>
 and </br>
-<img src="https://render.githubusercontent.com/render/math?math=\partial_t (\Phi \rho_w S_w \omega) + \nabla \cdot [\rho_w \omega \vec{v}_w - \rho_w D \nabla \omega] = \rho_w \omega \Gamma_w"> </br>
+<img src="https://render.githubusercontent.com/render/math?math=\partial_t (\Phi \rho_w S_w \omega) %2B \nabla \cdot [\rho_w \omega \vec{v}_w - \rho_w D \nabla \omega] = \rho_w \omega \Gamma_w"> </br>
 <sub>($\partial_t (\Phi \rho_w S_w \omega) + \nabla \cdot [\rho_w \omega \vec{v}_w - \rho_w D \nabla \omega] = \rho_w \omega \Gamma_w$)</sub>
 
-The system is implemented using UG4's luashell, the Richards and ConvectionDiffusion plugins.
-
 Usage:
-
+ugshell -ex unsat_flow_app/unsat_flow_driver.lua --problem-id "example"
 
 ## Examples
 
 ## Dependencies
-This app depends on the Richards Plugin by Dr. Arne Nägel and UG4's ConvectionDiffusion Plugin.
+This app depends on UG4's ConvectionDiffusion Plugin.
 
 ## References
 [1] Eckhard Schneid: Hybrid-Gemischte Finite-Elemente-Diskretisierung der Richards-Gleichung, Dissertation, FAU Erlangen, 2000
