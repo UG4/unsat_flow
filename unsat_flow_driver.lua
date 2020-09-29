@@ -37,6 +37,8 @@ local approxSpace = util.unsat.CreateApproxSpace(problem, dom)
 -- Index ordering
 OrderCuthillMcKee(approxSpace, true);
 
+
+-- Creating the Domain discretisation for the problem
 -- create element discretization
 util.unsat.CreateElemDisc("STANDIN", 
                           problem.domain.dim, 
@@ -45,7 +47,8 @@ util.unsat.CreateElemDisc("STANDIN",
                           problem.flow.gravity,
                           problem.flow.saturation,
                           problem.flow.viscosity,
-                          problem.flow.permeability)
+                          problem.flow.permeability,
+                          problem.flow.conductivity)
 
 
 

@@ -23,15 +23,22 @@ problem =
 		},	
 		
 		viscosity = 
-		{	type = "real",				-- viscosity function ["const", "real"] 
+		{	type = "const",			-- viscosity function ["const", "real"] 
 			mu0 = 1e-3				-- [ kg m^{-3} ]	
 		},
 		
-		diffusion		= 3.565e-6, -- constant
-		porosity 		= 0.1,		-- constant
-		permeability 	= 4.845e-13,
+		diffusion		= 3.565e-6, 	-- constant
+		porosity 		= 0.1,			-- constant
+		permeability 	= 4.845e-13, 	-- constant
+		conductivity	=
+		{	type	=	"exp",	-- ["const", "exp", "vanGenuchten"]
+			-- if "const" define value = number
+			-- if "exp" define alpha
+			-- if "vanGenuchten" define alpha and n
+			alpha = 1
+		}, 
 		saturation 		= 
-		{	type = "const",	-- saturation function ["const", exp", "richards"]
+		{	type = "const",	-- saturation function ["const", "exp", "richards"]
 			sat = 1.0
 		}, 
 
@@ -121,4 +128,21 @@ problem =
 } 
 
 function ConcentrationDirichletBnd(x, y, t)
-	if 
+	if y == 3 then
+		if (x <= 0) and (1 <= x) then
+			return 0.
+		end
+	elseif x == 2 then
+		if (y <= 0) and (1 <= y) then
+			return 1 - 1
+		end
+	else
+		return 2
+	end
+end
+
+
+
+
+--function ConcentrationStart(x, y, t)
+--	if 
