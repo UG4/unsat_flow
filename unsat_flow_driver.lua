@@ -39,18 +39,6 @@ OrderCuthillMcKee(approxSpace, true);
 
 
 -- Creating the Domain discretisation for the problem
--- create element discretization
-util.unsat.CreateElemDisc("STANDIN", 
-                          problem.domain.dim, 
-                          problem.flow.density,
-                          problem.flow.porosity,
-                          problem.flow.gravity,
-                          problem.flow.saturation,
-                          problem.flow.viscosity,
-                          problem.flow.permeability,
-                          problem.flow.conductivity)
+util.unsat.CreateDomainDisc(problem, approxSpace)
 
-
-
-
-
+-- Solver Config

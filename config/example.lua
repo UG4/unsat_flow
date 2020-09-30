@@ -17,50 +17,61 @@ problem =
 		
 		gravity = -9.81,    -- [ m s^{-2}�] ("standard", "no" or numeric value)	
 		density = 					
-		{	type = "linear", 				-- density function ["linear", "exp", "ideal"]
+		{	type = "linear", 		-- density function ["linear", "exp", "ideal"]
 			min = 1000,				-- [ kg m^{-3} ] water density
 			max = 1200				-- [ kg m^{-3} ] saltwater density
 		},	
 		
 		viscosity = 
-		{	type = "const",			-- viscosity function ["const", "real"] 
+		{	type = "real",			-- viscosity function ["const", "real"] 
 			mu0 = 1e-3				-- [ kg m^{-3} ]	
 		},
-		
-		diffusion		= 3.565e-6, 	-- constant
-		porosity 		= 0.1,			-- constant
-		permeability 	= 4.845e-13, 	-- constant
-		conductivity	=
-		{	type	=	"exp",	-- ["const", "exp", "vanGenuchten"]
-			-- if "const" define value = number
-			-- if "exp" define alpha
-			-- if "vanGenuchten" define alpha and n
-			alpha = 1
-		}, 
-		saturation 		= 
-		{	type = "const",	-- saturation function ["const", "exp", "richards"]
-			sat = 1.0
-		}, 
-
-		initial = 
-		{
-			{ cmp = "c", value = "ConcentrationStart" },
-			{ cmp = "p", value = "PressureStart" },		
-		},
-		
-		boundary = 
-		{
-			natural = "noflux",
-			
-			{ cmp = "c", type = "level", bnd = "Boundary", value = "ConcentrationDirichletBnd" },
-			{ cmp = "p", type = "level", bnd = "Boundary", value = "PressureDirichletBnd" },
-		},
-		
-		source = 
-		{
-		}
 	},
-	
+
+	medium = 
+	{
+	    { 	subsets = {"CLAY"}, 
+	      	porosity = 1.0,
+			saturation = 
+			{	type = "const",	-- saturation function ["const", "exp", "richards"]
+				sat = 1.0,
+			},
+	      	conductivity =
+			{	type	=	"exp",	-- ["const", "exp", "vanGenuchten"]
+				-- if "const" define value = number
+				-- if "exp" define alpha
+				-- if "vanGenuchten" define alpha and n
+				alpha = 1,
+			},
+			diffusion		= 3.565e-6, 	-- constant
+			permeability 	= 4.845e-13, 	-- constant
+	    },
+	    { 	subsets = {"SAND_LEFT","SAND_RIGHT"}, 
+	      	porosity = 1.0,
+			saturation 		= 
+			{	type = "const",
+				sat = 1.0
+			},
+	      	conductivity	=
+			{	type	=	"exp",
+				alpha = 1
+			},
+			diffusion		= 3.565e-6,
+			permeability 	= 4.845e-13,
+	    },
+	},
+
+	initial_conditions = 
+	{
+	    { cmp = "h", value = "Levee2D_HydrostaticHead" },
+	},
+
+	boundary_conditions = 
+	{
+	   	{cmp = "h", type = "dirichlet", bnd = "WaterBnd", value = "Levee2D_RisingFlood"},
+	    {cmp = "h", type = "dirichlet", bnd = "ToeBnd", value = 0.0 },
+	},
+		
 	solver =
 	{
 		type = "newton",

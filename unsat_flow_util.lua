@@ -162,31 +162,22 @@ function util.unsat.CreateApproxSpace(problem, dom)
 end
 
 -- Element discretisation
-function util.unsat.CreateElemDisc(subdom, dim, densDesc, porosity, gravDesc, satDesc, visDesc, permDesc, condDesc)
+function util.unsat.CreateElemDisc(subdom, densDesc, porosity, gravity, satDesc, viscDesc, permDesc, condDesc)
+    
     -- Creates the elememt discretisation for a given medium
-    -- subdom: subset with a isotropic medium
-    -- dim: problem dimension
-    -- density: density description
-    -- porosity: medium porosity
-    -- gravity: gravitational force value. force always directs downwards
-
 	local elemDisc = {}
     -- flow equation
 	elemDisc["flow"] = ConvectionDiffusion("p", subdom, "fv1")
 	-- transport equation
     elemDisc["salt"] = ConvectionDiffusion("w", subdom, "fv1")
 
-    -- constructing gravity vector
-    gravity = ConstUserVector(0.0)
-    gravity:set_entry(dim-1, gravDesc)
-
-    viscosity = util.unsat.viscosity(visDesc)
-    if visDesc.type == "real" then
-        viscosity:set_input(0, elemDisc["salt"]:value())
-    end
-
     density = util.unsat.density(densDesc)
     density:set_input(0, elemDisc["salt"]:value())
+
+    viscosity = util.unsat.viscosity(problem.flow.viscosity)
+    if problem.flow.viscosity.type == "real" then
+        viscosity:set_input(0, elemDisc["salt"]:value())
+    end
 
     permeability = permDesc
 
@@ -255,14 +246,39 @@ function util.unsat.CreateElemDisc(subdom, dim, densDesc, porosity, gravDesc, sa
   	elemDisc["salt"]:set_diffusion(diffusion)
 
     print("Created Element Discretisation for Subset ", subdom)
+
+    return elemDisc
 end
 
 
-function util.unsat.CreateDomainDisc(problemapproxSpace)
-    for 
+function util.unsat.CreateDomainDisc(problem, approxSpace)
 	domainDisc = DomainDiscretization(approxSpace)
-	domainDisc:add(elemDisc["flow"])
-	domainDisc:add(elemDisc["salt"])
+
+    -- constructing gravity vector
+    local dim = problem.domain.dim
+    gravity = ConstUserVector(0.0)
+    gravity:set_entry(dim-1, problem.flow.gravity)
+
+    for i,medium in ipairs(problem.medium) do -- for all media
+        local mySubsetList = medium.subsets
+        local elemDisc = nil
+
+        for j, subset in ipairs(medium.subsets) do
+            elemDisc = util.unsat.CreateElemDisc(   subset,
+                                                    problem.flow.density,
+                                                    medium.porosity,
+                                                    gravity,
+                                                    medium.saturation,
+                                                    problem.flow.viscosity,
+                                                    medium.permeability,
+                                                    medium.conductivity)
+            domainDisc:add(elemDisc["flow"])
+            domainDisc:add(elemDisc["salt"])
+        end
+    end
+    print("Created Domain Discretisation")
+
+    
 
 	--TODO: Boundaries
 end
