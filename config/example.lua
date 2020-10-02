@@ -14,7 +14,7 @@ problem =
 	{
 		type = "haline",
 		cmp = {"c", "p"},
-		
+
 		gravity = -9.81,    -- [ m s^{-2}�] ("standard", "no" or numeric value)	
 		density = 					
 		{	type = "linear", 		-- density function ["linear", "exp", "ideal"]
@@ -33,18 +33,31 @@ problem =
 	    { 	subsets = {"CLAY"}, 
 	      	porosity = 1.0,
 			saturation = 
-			{	type = "const",	-- saturation function ["const", "exp", "richards"]
-				sat = 1.0,
+			{	-- type = "const",	-- saturation function ["const", "exp", "richards"]
+				-- if "const" define value = number
+				-- if "exp" define alpha, air_pressure and K_s
+				-- if "vanGenuchten" define alpha and n
+				alpha 			= 0.423,
+				air_pressure 	= 1013.25e2, 	-- [Pa] constant
+				type = "vanGenuchten",
+				value = "@Silt"
 			},
 	      	conductivity =
-			{	type	=	"exp",	-- ["const", "exp", "vanGenuchten"]
+			{	-- type			= "exp",	-- ["const", "exp", "vanGenuchten"]
 				-- if "const" define value = number
-				-- if "exp" define alpha
-				-- if "vanGenuchten" define alpha and n
-				alpha = 1,
+				-- if "exp" define alpha, air_pressure, thetaS and thetaR
+				-- if "vanGenuchten" define a parameter list then value = uid
+				alpha 			= 0.423,
+				air_pressure 	= 1013.25e2, 	-- [Pa] constant
+				thetaS 			= 0.396, 
+				thetaR 			= 0.131,
+
+				type	= "vanGenuchten", 
+				value 	= "@Silt"
 			},
 			diffusion		= 3.565e-6, 	-- constant
 			permeability 	= 4.845e-13, 	-- constant
+
 	    },
 	    { 	subsets = {"SAND_LEFT","SAND_RIGHT"}, 
 	      	porosity = 1.0,
@@ -53,13 +66,29 @@ problem =
 				sat = 1.0
 			},
 	      	conductivity	=
-			{	type	=	"exp",
-				alpha = 1
+			{	type			= "exp",
+				alpha 			= 1,
+				air_pressure 	= 1013.25e2,
 			},
 			diffusion		= 3.565e-6,
 			permeability 	= 4.845e-13,
 	    },
 	},
+
+	parameter = 
+	{
+	    { uid = "@Silt", 
+	      type = "vanGenuchten",
+	      thetaS = 0.396, thetaR = 0.131,
+	    --thetaS = 0.396, thetaR = 0.396,
+	      alpha = 0.423, n = 2.06, Ksat= 4.96e-1 }, 
+	    
+	    { uid = "@Clay",  -- modified n
+	      type = "vanGenuchten",
+	      alpha = 0.152, n = 3.06,  
+	      thetaS = 0.446, thetaR = 0.1, 
+	      Ksat= 8.2e-4 * 1e-3,},
+    },
 
 	initial_conditions = 
 	{

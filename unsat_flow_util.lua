@@ -6,23 +6,44 @@
 -- namespace creation
 util.unsat = util.unsat or {}
 
+local json = require("json")
+
 
 function util.unsat.conductivity(condDesc)
     local conductivity = nil
     local alpha = nil
+    local p_a = nil
+    local thetaS = nil
+    local thetaR = nil
 
     if condDesc.type == "const" then
         conductivity = condDesc.value
 
     elseif condDesc.type == "exp" then
         local alpha = condDesc.alpha
+        local p_a = condDesc.air_pressure
+        local thetaS = condDesc.thetaS
+        local thetaR = condDesc.thetaR
         function ConductivityFct(p)
-
-            return math.exp(alpha * p)
+            -- p is the water pressure. the pressure used by the 
+            -- exponential model should be the capillary pressure (p_c).
+            -- therefore the case p_a (air pressure) - p_w (water pressure) < 0
+            -- needs to be handled
+            p_c = p_a - p
+            if p_c < 0 then
+                return 0
+            else
+                return thetaR + (thetaS - thetaR) * math.exp(alpha * p)
+            end
         end
 
         function dpConductivityFct(p)
-            return alpha * math.exp(alpha * p)
+            p_c = p_a - p
+            if p_c < 0 then
+                return 0
+            else
+                return (thetaS - thetaR) * alpha * math.exp(alpha * p)
+            end
         end
 
         conductivity = LuaUserFunctionNumber("ConductivityFct", 1)
@@ -88,9 +109,40 @@ end
 
 function util.unsat.saturation(satDesc)
     local saturation = nil
+    local alpha = nil
+    local K_s = nil
+
     if satDesc.type == "const" then
         -- constant saturation
-        saturation = satDesc.sat
+        saturation = satDesc.value
+
+    elseif satDesc.type == "exp" then
+        local alpha = satDesc.alpha
+
+        function SaturationFct(p)
+            -- p is the water pressure. the pressure used by the 
+            -- exponential model should be the capillary pressure (p_c).
+            -- therefore the case p_a (air pressure) - p_w (water pressure) < 0
+            -- needs to be handled
+            p_c = p_a - p
+            if p_c < 0 then
+                return 0
+            else
+                return K_sat * math.exp(alpha * p)
+            end
+        end
+
+        function dpSaturationFct(p)
+            p_c = p_a - p
+            if p_c < 0 then
+                return 0
+            else
+                return K_sat * alpha * math.exp(alpha * p)
+            end
+        end
+
+        saturation = LuaUserFunctionNumber("SaturationFct", 1)
+        saturation:set_deriv(0, "dpSaturationFct")
     end
 
     return saturation
@@ -121,29 +173,31 @@ function util.unsat.viscosity(visDesc)
     return viscosity
 end
 
-function util.unsat.conductivity(condDesc)
-    local conductivity = nil
-    if condDesc.type == "const" then
-        conductivity = condDesc.value
+function util.unsat.conductivitySaturation(condDesc, satDesc, paramDesc)
+    local models = {conductivity = nil, saturation = nil}
+    modelMap = {}
 
-    elseif condDesc.type == "exp" then
-        function ConductivityFct(p)
-            return 1
-        end
+    for i, medium in ipairs(paramDesc) do
+        print(json.encode(medium))
+    	if medium.type == "vanGenuchten" then
+    		modelMap[medium.uid] = CreateVanGenuchtenModel(json.encode(medium))
+    	end
+   	end
 
-        function dpConductivityFct(p)
-            return 0
-        end
-        conductivity = LuaUserFunctionNumber("ConductivityFct", 1)
-        conductivity:set_deriv(0, "dpConductivityFct")
-
-    elseif condDesc.type == "vanGenuchten" then
-        -- TODO RichardsPlugin
-        conductivity = 1
+    if condDesc.type == "vanGenuchten" then
+        models["conductivity"] = RichardsConductivity(modelMap[condDesc.value])
+    else
+        models["conductivity"] = util.unsat.conductivity(condDesc)
     end
-    return conductivity
+
+    if satDesc.type == "vanGenuchten" then
+        models["saturation"] = RichardsSaturation(modelMap[satDesc.value])
+    else
+        models["saturation"] = util.unsat.saturation(condDesc)
+    end
+
+    return models
 end
-        
 
 -- Ansatzraum
 -- Creates a approximation space for a problem
@@ -162,8 +216,7 @@ function util.unsat.CreateApproxSpace(problem, dom)
 end
 
 -- Element discretisation
-function util.unsat.CreateElemDisc(subdom, densDesc, porosity, gravity, satDesc, viscDesc, permDesc, condDesc)
-    
+function util.unsat.CreateElemDisc(subdom, densDesc, porosity, gravity, satDesc, viscDesc, permDesc, condDesc, paramDesc)
     -- Creates the elememt discretisation for a given medium
 	local elemDisc = {}
     -- flow equation
@@ -184,13 +237,27 @@ function util.unsat.CreateElemDisc(subdom, densDesc, porosity, gravity, satDesc,
     -- hydraulic conductivity in saturated medium
     -- K_s = k / mu
 
-    -- the permeability is multiplied by relative
-    -- hydraulic conductivity k(p)
-    conductivity = util.unsat.conductivity(condDesc)
+    -- the vanGenuchten model is calculated using the Richards Plugin
+    condSatModels = util.unsat.conductivitySaturation(condDesc, satDesc, paramDesc)
+    conductivity = condSatModels["conductivity"]
+    saturation = condSatModels["saturation"]
+
     if condDesc.type == "exp" then
         conductivity:set_input(0, elemDisc["flow"]:value())
+
+    elseif condDesc.type == "vanGenuchten" then
+        conductivity:set_capillary(-1.0 * elemDisc["flow"]:value())
     end
 
+    if satDesc.type == "exp" then
+        saturation:set_input(0, elemDisc["flow"]:value())
+
+    elseif satDesc.type == "vanGenuchten" then
+        saturation:set_capillary(-1.0 * elemDisc["flow"]:value())
+    end
+
+    -- the permeability is multiplied by relative
+    -- hydraulic conductivity k(p)
     hydrCond = ScaleAddLinkerMatrix()
     hydrCond:add(conductivity, permeability)
 
@@ -204,11 +271,6 @@ function util.unsat.CreateElemDisc(subdom, densDesc, porosity, gravity, satDesc,
     DarcyVelocity:set_gravity(gravity)
 	-- print("Darcy Velocity created.")
 
-    -- TODO: vanGenuchten and exponential model
-    saturation = util.unsat.saturation(satDesc)
-
-	local storage = porosity*saturation*density
-
 	-----------------------------------------
 	-- Equation [1]
 	-----------------------------------------
@@ -217,13 +279,14 @@ function util.unsat.CreateElemDisc(subdom, densDesc, porosity, gravity, satDesc,
 	--		+ \nabla \cdot [\rho_w \vec{v}_w] = \rho_w \Gamma_w$
 
 	-- fluid storage: \Phi \rho_w S_w
-	local fluidStorage = storage
+	local storage = ScaleAddLinkerNumber()
+    storage:add(porosity*density, saturation)
 
 	-- flux \rho_w \vec{v}_w
 	local fluidFlux = ScaleAddLinkerVector()
 	fluidFlux:add(density, DarcyVelocity)
 
-	elemDisc["flow"]:set_mass(fluidStorage)
+	elemDisc["flow"]:set_mass(storage)
 	elemDisc["flow"]:set_flux(fluidFlux)
 	elemDisc["flow"]:set_mass_scale(0.0)
   	elemDisc["flow"]:set_diffusion(0.0)
@@ -241,7 +304,7 @@ function util.unsat.CreateElemDisc(subdom, densDesc, porosity, gravity, satDesc,
     transport_velocity = density * DarcyVelocity
 
 	elemDisc["salt"]:set_mass(0.0)
-	elemDisc["salt"]:set_mass_scale(fluidStorage)
+	elemDisc["salt"]:set_mass_scale(storage)
 	elemDisc["salt"]:set_velocity(transport_velocity)
   	elemDisc["salt"]:set_diffusion(diffusion)
 
@@ -271,14 +334,15 @@ function util.unsat.CreateDomainDisc(problem, approxSpace)
                                                     medium.saturation,
                                                     problem.flow.viscosity,
                                                     medium.permeability,
-                                                    medium.conductivity)
+                                                    medium.conductivity,
+                                                    problem.parameter)
             domainDisc:add(elemDisc["flow"])
             domainDisc:add(elemDisc["salt"])
         end
     end
     print("Created Domain Discretisation")
 
-    
+
 
 	--TODO: Boundaries
 end

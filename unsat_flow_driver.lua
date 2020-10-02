@@ -7,9 +7,6 @@ package.path = package.path..";".. myPath.."/config/?.lua;".. myPath.."/?.lua"
 ug_load_script("../scripts/ug_util.lua")
 ug_load_script("/unsat_flow_util.lua")
 
--- GetParamNumber und GetParam lesen command line arguments mit entsprechenden flags aus und speichern sie. der angegebene
--- Wert ist das default value, das eingetragen wird, wenn eine flag nicht gesetzt ist
-
 ARGS = {
   problemID = util.GetParam("--problem-id", "levee2D"),
   numPreRefs = util.GetParamNumber("--numPreRefs", 1, "number of refinements before parallel distribution"),
@@ -18,7 +15,6 @@ ARGS = {
 
 util.CheckAndPrintHelp("unsaturated density flow problem");
 
--- importiert das Problem gespeichert in einem seperaten file
 local import = require(ARGS.problemID)
 
 InitUG(problem.domain.dim, AlgebraType("CPU", 1))
