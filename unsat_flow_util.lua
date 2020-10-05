@@ -64,7 +64,6 @@ function util.unsat.density(densDesc)
     -- w: mass fraction
     if densDesc.type == "linear" then
         -- linear density function
-        -- p = p_s + (p_w - p_s) * w
         function DensityFct(w)
             return p_s + (p_w - p_s) * w
         end
@@ -78,7 +77,6 @@ function util.unsat.density(densDesc)
 
     elseif densDesc.type == "exp" then
         -- exponential density function
-        -- p = p_s * (p_w / p_s)^w
         function DensityFct(w)
             return p_s * (p_w / p_s)^w
         end
@@ -91,6 +89,7 @@ function util.unsat.density(densDesc)
         density:set_deriv(0, "dwDensityFct");
 
     elseif densDesc.type == "ideal" then
+        -- ideal density function
         function DensityFct(w)
             return 1/(1/p_s + (1/(p_w - p_s))^w)
         end
@@ -111,6 +110,7 @@ function util.unsat.saturation(satDesc)
     local saturation = nil
     local alpha = nil
     local K_s = nil
+    local p_a = nil
 
     if satDesc.type == "const" then
         -- constant saturation
@@ -118,6 +118,7 @@ function util.unsat.saturation(satDesc)
 
     elseif satDesc.type == "exp" then
         local alpha = satDesc.alpha
+        local p_a = satDesc.air_pressure
 
         function SaturationFct(p)
             -- p is the water pressure. the pressure used by the 
@@ -178,7 +179,6 @@ function util.unsat.conductivitySaturation(condDesc, satDesc, paramDesc)
     modelMap = {}
 
     for i, medium in ipairs(paramDesc) do
-        print(json.encode(medium))
     	if medium.type == "vanGenuchten" then
     		modelMap[medium.uid] = CreateVanGenuchtenModel(json.encode(medium))
     	end
@@ -340,6 +340,17 @@ function util.unsat.CreateDomainDisc(problem, approxSpace)
             domainDisc:add(elemDisc["salt"])
         end
     end
+
+    -- Create Boundary Conditions
+    dirichletBnd = DirichletBoundary()
+    for i, v in ipairs(problem.boundary_conditions) do
+        if v.type == "dirichlet" then
+            dirichletBnd:add(v.value, v.cmp, v.bnd)
+        end
+    end
+
+    domainDisc:add(dirichletBnd)
+
     print("Created Domain Discretisation")
 
 

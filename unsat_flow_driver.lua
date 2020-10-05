@@ -8,14 +8,25 @@ ug_load_script("../scripts/ug_util.lua")
 ug_load_script("/unsat_flow_util.lua")
 
 ARGS = {
-  problemID = util.GetParam("--problem-id", "levee2D"),
+  problemID = util.GetParam("--problem-id", "trench2D"),
   numPreRefs = util.GetParamNumber("--numPreRefs", 1, "number of refinements before parallel distribution"),
   numRefs = util.GetParamNumber("--num-refs", 2, "number of refinements after parallel distribution"),
+  check = util.HasParamOption("--check", false, "checks if the config file has the correct layout")
   }
 
 util.CheckAndPrintHelp("unsaturated density flow problem");
 
 local import = require(ARGS.problemID)
+
+if ARGS.check then
+    local check = require("problem_check")
+    print("checking problem file ", ARGS.problemID, ".lua")
+    if not problem_check(problem) then
+        print("problem check failed.")
+        exit()
+    end
+    print()
+end
 
 InitUG(problem.domain.dim, AlgebraType("CPU", 1))
 

@@ -37,8 +37,8 @@ problem =
 				-- if "const" define value = number
 				-- if "exp" define alpha, air_pressure and K_s
 				-- if "vanGenuchten" define alpha and n
-				alpha 			= 0.423,
-				air_pressure 	= 1013.25e2, 	-- [Pa] constant
+				--alpha 			= 0.423,
+				--air_pressure 	= 1013.25e2, 	-- [Pa] constant
 				type = "vanGenuchten",
 				value = "@Silt"
 			},
@@ -63,12 +63,14 @@ problem =
 	      	porosity = 1.0,
 			saturation 		= 
 			{	type = "const",
-				sat = 1.0
+				value = 1.0
 			},
 	      	conductivity	=
 			{	type			= "exp",
-				alpha 			= 1,
-				air_pressure 	= 1013.25e2,
+				alpha 			= 0.423,
+				air_pressure 	= 1013.25e2, 	-- [Pa] constant
+				thetaS 			= 0.396, 
+				thetaR 			= 0.131,
 			},
 			diffusion		= 3.565e-6,
 			permeability 	= 4.845e-13,
@@ -92,13 +94,13 @@ problem =
 
 	initial_conditions = 
 	{
-	    { cmp = "h", value = "Levee2D_HydrostaticHead" },
+	    { cmp = "p", value = "ConcentrationStart" },
 	},
 
 	boundary_conditions = 
 	{
-	   	{cmp = "h", type = "dirichlet", bnd = "WaterBnd", value = "Levee2D_RisingFlood"},
-	    {cmp = "h", type = "dirichlet", bnd = "ToeBnd", value = 0.0 },
+	   	{cmp = "p", type = "dirichlet", bnd = "WaterBnd", value = "ConcentrationDirichletBnd"},
+	    {cmp = "p", type = "dirichlet", bnd = "ToeBnd", value = 0.0 },
 	},
 		
 	solver =
@@ -179,6 +181,18 @@ function ConcentrationDirichletBnd(x, y, t)
 	else
 		return 2
 	end
+end
+
+function PressureDirichletBnd(x, y, t)
+
+end
+
+function ConcentrationStart(x, y, t)
+
+end
+
+function PressureStart(x, y, t)
+
 end
 
 
