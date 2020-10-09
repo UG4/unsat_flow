@@ -8,7 +8,6 @@ util.unsat = util.unsat or {}
 
 local json = require("json")
 
-
 function util.unsat.conductivity(condDesc)
     local conductivity = nil
     local alpha = nil
@@ -30,8 +29,10 @@ function util.unsat.conductivity(condDesc)
             -- therefore the case p_a (air pressure) - p_w (water pressure) < 0
             -- needs to be handled
             p_c = p_a - p
+            print(p)
+            print(p_c)
             if p_c < 0 then
-                return 0
+                return 1
             else
                 return thetaR + (thetaS - thetaR) * math.exp(alpha * p)
             end
@@ -127,7 +128,7 @@ function util.unsat.saturation(satDesc)
             -- needs to be handled
             p_c = p_a - p
             if p_c < 0 then
-                return 0
+                return 1
             else
                 return K_sat * math.exp(alpha * p)
             end
@@ -227,8 +228,8 @@ function util.unsat.CreateElemDisc(subdom, densDesc, porosity, gravity, satDesc,
     density = util.unsat.density(densDesc)
     density:set_input(0, elemDisc["salt"]:value())
 
-    viscosity = util.unsat.viscosity(problem.flow.viscosity)
-    if problem.flow.viscosity.type == "real" then
+    viscosity = util.unsat.viscosity(viscDesc)
+    if viscDesc.type == "real" then
         viscosity:set_input(0, elemDisc["salt"]:value())
     end
 
@@ -301,11 +302,10 @@ function util.unsat.CreateElemDisc(subdom, densDesc, porosity, gravity, satDesc,
 
 	diffusion = ScaleAddLinkerMatrix()
 	diffusion:add(density, 1.0)
-    transport_velocity = density * DarcyVelocity
 
 	elemDisc["salt"]:set_mass(0.0)
 	elemDisc["salt"]:set_mass_scale(storage)
-	elemDisc["salt"]:set_velocity(transport_velocity)
+	elemDisc["salt"]:set_velocity(fluidFlux)
   	elemDisc["salt"]:set_diffusion(diffusion)
 
     print("Created Element Discretisation for Subset ", subdom)
@@ -316,6 +316,11 @@ end
 
 function util.unsat.CreateDomainDisc(problem, approxSpace)
 	domainDisc = DomainDiscretization(approxSpace)
+
+    local myCompositeGauge = CompositeUserNumber(false)
+    local myCompositeFlux = CompositeUserVector(false)
+    local myCompositeStorage = CompositeUserNumber(false)
+    local myCompositeConductivity = CompositeUserNumber(false)
 
     -- constructing gravity vector
     local dim = problem.domain.dim
@@ -338,8 +343,19 @@ function util.unsat.CreateDomainDisc(problem, approxSpace)
                                                     problem.parameter)
             domainDisc:add(elemDisc["flow"])
             domainDisc:add(elemDisc["salt"])
+
+            local si = domain:subset_handler():get_subset_index(mySubset)
+            myCompositeGauge:add(si, elemDisc:value())
+            myCompositeFlux:add(si, elemDisc:get_flux_data())
+            myCompositeStorage:add(si, elemDisc:get_storage_data())
+            myCompositeConductivity:add(si, elemDisc:get_conductivity_data())
         end
     end
+
+    vtkOutput:select_element(myCompositeGauge, "gauge");
+    vtkOutput:select_element(myCompositeFlux, "flux");
+    vtkOutput:select_element(myCompositeStorage, "storage");
+    vtkOutput:select_element(myCompositeConductivity, "conductivity");
 
     -- Create Boundary Conditions
     dirichletBnd = DirichletBoundary()
@@ -351,10 +367,18 @@ function util.unsat.CreateDomainDisc(problem, approxSpace)
 
     domainDisc:add(dirichletBnd)
 
+
     print("Created Domain Discretisation")
 
-
+    return domainDisc
 
 	--TODO: Boundaries
+end
+
+
+function util.unsat.SetInitialData(problemDesc, u)
+  for index,myInitial in ipairs(problemDesc.initial_conditions) do
+    Interpolate(myInitial.value, u, myInitial.cmp)
+  end
 end
 

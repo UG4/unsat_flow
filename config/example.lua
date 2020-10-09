@@ -4,7 +4,7 @@ problem =
 	domain = 
 	{
 		dim = 2,                        -- problem dimension
-		grid = "grids/trench2D.ugx",    -- grid name
+		grid = "grids/levee2D.ugx",    -- grid name
 		numRefs = 2,                    -- refinements after distribution
 		numPreRefs = 1,                 -- refinements before distribution
 	},
@@ -62,8 +62,8 @@ problem =
 	    { 	subsets = {"SAND_LEFT","SAND_RIGHT"}, 
 	      	porosity = 1.0,
 			saturation 		= 
-			{	type = "const",
-				value = 1.0
+			{	type = "vanGenuchten",
+				value = "@Silt"
 			},
 	      	conductivity	=
 			{	type			= "exp",
@@ -184,15 +184,15 @@ function ConcentrationDirichletBnd(x, y, t)
 end
 
 function PressureDirichletBnd(x, y, t)
-
+	return 1
 end
 
 function ConcentrationStart(x, y, t)
-
+	return 1
 end
 
 function PressureStart(x, y, t)
-
+	return
 end
 
 

@@ -49,7 +49,6 @@ function problem_check(problem)
             -- __min: a minimal value for a number
             -- __max: respectively a max value for a number
             -- __type: a table containing possible types for a variable
-            -- __exists: if true, checks if a function exists
             -- __content_type: checks if the content of a table is of this type
             if k == "__min" then
                 if value < v then
@@ -102,7 +101,7 @@ function problem_check(problem)
                     for key, value in pairs(template) do
                         if not table_check(table[key], value) then
                             print("failed at key ", key)
-                            print("template value should be ", value)
+                            print("value should be ", value)
                             print("actual value is ", table[key])
                             return false
                         end
