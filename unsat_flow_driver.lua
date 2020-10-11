@@ -19,10 +19,6 @@ util.CheckAndPrintHelp("unsaturated density flow problem");
 
 local problem = require(ARGS.problemID)
 
-InitUG(problem.domain.dim, AlgebraType("CPU", 1))
-
-local vtk = VTKOutput()
-
 if ARGS.check then
     local check = require("problem_check")
     print("checking problem file ", ARGS.problemID, ".lua")
@@ -33,37 +29,45 @@ if ARGS.check then
     print()
 end
 
+
+InitUG(problem.domain.dim, AlgebraType("CPU", 1))
+
+local vtk = VTKOutput()
+
 local dom = util.CreateAndDistributeDomain(problem.domain.grid, ARGS.numRefs, ARGS.numPreRefs,  {})
 
 -- saves the refined grid
 -- SaveGridHierarchyTransformed(dom:grid(), dom:subset_handler(), "refined.ugx", 0.1)
 
+disc = ProblemDisc:new(problem, dom, vtk)
+
 -- create approximation space.
-local approxSpace = util.unsat.CreateApproxSpace(problem, dom)
+approxSpace = disc:CreateApproxSpace()
+print(approxSpace)
 
 -- Index ordering
 OrderCuthillMcKee(approxSpace, true);
 
 -- Creating the Domain discretisation for the problem
-local domainDisc = util.unsat.CreateDomainDisc(problem, approxSpace)
+domainDisc = disc:CreateDomainDisc(approxSpace)
 
 -- Solver Config
 
-local u = GridFunction(approxSpace)
+u = GridFunction(approxSpace)
 util.unsat.SetInitialData(problem, u)
 
 
-local linSolver = LU()
+linSolver = LU()
 
-local newtonConvCheck = ConvCheck()
+newtonConvCheck = ConvCheck()
 newtonConvCheck:set_maximum_steps(10)
 newtonConvCheck:set_minimum_defect(5e-8)
 newtonConvCheck:set_reduction(1e-10)
 newtonConvCheck:set_verbose(true)
 
-local newtonLineSearch = StandardLineSearch()
+newtonLineSearch = StandardLineSearch()
 
-local newtonSolver = NewtonSolver()
+newtonSolver = NewtonSolver()
 newtonSolver:set_linear_solver(linSolver)
 newtonSolver:set_convergence_check(newtonConvCheck)
 newtonSolver:set_line_search(newtonLineSearch)

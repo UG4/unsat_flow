@@ -8,51 +8,211 @@ util.unsat = util.unsat or {}
 
 local json = require("json")
 
-function util.unsat.conductivity(condDesc)
-    local conductivity = nil
-    local alpha = nil
-    local p_a = nil
-    local thetaS = nil
-    local thetaR = nil
+-- object oriented clustering of the Approximation Space, Element Discretisation and
+-- Domain Discretisation
+ProblemDisc = {}
 
-    if condDesc.type == "const" then
-        conductivity = condDesc.value
+function ProblemDisc:new(problemDesc, dom, vtk)
+    assert(problemDesc, "No Input defined")
+    problemObj = {}
+    setmetatable(problemObj, self)
+    self.__index = self
 
-    elseif condDesc.type == "exp" then
-        local alpha = condDesc.alpha
-        local p_a = condDesc.air_pressure
-        local thetaS = condDesc.thetaS
-        local thetaR = condDesc.thetaR
-        function ConductivityFct(p)
-            -- p is the water pressure. the pressure used by the 
-            -- exponential model should be the capillary pressure (p_c).
-            -- therefore the case p_a (air pressure) - p_w (water pressure) < 0
-            -- needs to be handled
-            p_c = p_a - p
-            print(p)
-            print(p_c)
-            if p_c < 0 then
-                return 1
-            else
-                return thetaR + (thetaS - thetaR) * math.exp(alpha * p)
-            end
-        end
+    self.problem = problemDesc
+    self.domain = dom
+    self.vtk = vtk
+    self.cmp = problemDesc.flow.cmp
+    self.approxSpace = nil
+    self.ElemDisc = nil
+    self.domainDisc = nil
 
-        function dpConductivityFct(p)
-            p_c = p_a - p
-            if p_c < 0 then
-                return 0
-            else
-                return (thetaS - thetaR) * alpha * math.exp(alpha * p)
-            end
-        end
+    self.gravity = ConstUserVector(0.0)
+    self.gravity:set_entry(problemDesc.domain.dim-1, problemDesc.flow.gravity)
 
-        conductivity = LuaUserFunctionNumber("ConductivityFct", 1)
-        conductivity:set_deriv(0, "dpConductivityFct")
+    self.modelMap = nil
+    if problemDesc.parameter ~= nil then
+        self.modelMap = ProblemDisc:CreateModelMap(problemDesc.parameter)
+    end
+    return problemObj
+end
+
+function ProblemDisc:CreateApproxSpace()
+    -- documentation for ug function ApproximationSpace: line 277 in /ug4/ugcore/ugbase/lib_disc/function_spaces/approximation_space.h
+    approxSpace = ApproximationSpace(self.domain)
+    approxSpace:add_fct(self.cmp[1], "Lagrange", 1)
+    approxSpace:add_fct(self.cmp[2], "Lagrange", 1)
+    approxSpace:init_levels()
+    approxSpace:init_top_surface()
+    approxSpace:print_statistic()
+    self.approxSpace = approxSpace
+  return approxSpace
+end
+
+-- Element discretisation
+function ProblemDisc:CreateElemDisc(subdom, medium)
+    -- Creates the elememt discretisation for a given medium
+	elemDisc = {}
+    -- flow equation
+	elemDisc["flow"] = ConvectionDiffusion(self.cmp[1], subdom, "fv1")
+	-- transport equation
+    elemDisc["transport"] = ConvectionDiffusion(self.cmp[2], subdom, "fv1")
+
+    density = util.unsat.density(self.problem.flow.density)
+    density:set_input(0, elemDisc["transport"]:value())
+
+    viscosity = util.unsat.viscosity(self.problem.flow.viscosity)
+    if self.problem.flow.viscosity.type == "real" then
+        viscosity:set_input(0, elemDisc["transport"]:value())
     end
 
-    return conductivity
+    permeability = medium.permeability
 
+    porosity = medium.porosity
+    -- hydraulic conductivity in saturated medium
+    -- K_s = k / mu
+
+    -- the vanGenuchten model is calculated using the Richards Plugin
+    local conductivity = ProblemDisc:conductivity(medium.conductivity.value)
+    local saturation = ProblemDisc:saturation(medium.saturation.value)
+
+    capillary = self.problem.flow.air_pressure - elemDisc["flow"]:value()
+
+    if medium.conductivity.type == "exp" then
+        conductivity:set_input(0, capillary)
+
+    elseif medium.conductivity.type == "vanGenuchten" then
+        conductivity:set_capillary(-1.0 * capillary)
+    end
+
+    if medium.saturation.type == "exp" then
+        saturation:set_input(0, capillary)
+
+    elseif medium.saturation.type == "vanGenuchten" then
+        saturation:set_capillary(-1.0 * capillary)
+    end
+
+    -- the permeability is multiplied by relative
+    -- hydraulic conductivity k(p)
+    hydrCond = ScaleAddLinkerMatrix()
+    hydrCond:add(conductivity, permeability)
+
+    -- Darcy Velocity
+    -- $\vec q := -k*k(p)/mu (\grad p - \rho \vec g)$
+    local DarcyVelocity = DarcyVelocityLinker()
+    DarcyVelocity:set_permeability(hydrCond)
+    DarcyVelocity:set_viscosity(viscosity)
+    DarcyVelocity:set_pressure_gradient(elemDisc["flow"]:gradient())
+    DarcyVelocity:set_density(density)
+    DarcyVelocity:set_gravity(self.gravity)
+	-- print("Darcy Velocity created.")
+
+	-----------------------------------------
+	-- Equation [1]
+	-----------------------------------------
+	-- flow equation
+	-- $\partial_t (\Phi \rho_w S_w) 
+	--		+ \nabla \cdot [\rho_w \vec{v}_w] = \rho_w \Gamma_w$
+
+	-- fluid storage: \Phi \rho_w S_w
+	local storage = ScaleAddLinkerNumber()
+    print(porosity, density, saturation)
+    storage:add(porosity*density, saturation)
+
+	-- flux \rho_w \vec{v}_w
+	local fluidFlux = ScaleAddLinkerVector()
+	fluidFlux:add(density, DarcyVelocity)
+
+	elemDisc["flow"]:set_mass(storage)
+	elemDisc["flow"]:set_flux(fluidFlux)
+	elemDisc["flow"]:set_mass_scale(0.0)
+  	elemDisc["flow"]:set_diffusion(0.0)
+
+	-----------------------------------------
+	-- Equation [2]
+	-----------------------------------------
+	-- transport convection and diffusion => transport equation
+	-- $\partial_t (\Phi \rho_w S_w \omega) 
+	-- 		+ \nabla \cdot [\rho_w \omega \vec{v}_w - \rho_w D \nabla \omega] 
+	--			= \rho_w \omega \Gamma_w$
+
+	diffusion = ScaleAddLinkerMatrix()
+	diffusion:add(density, 1.0)
+
+	elemDisc["transport"]:set_mass(0.0)
+	elemDisc["transport"]:set_mass_scale(storage)
+	elemDisc["transport"]:set_velocity(fluidFlux)
+  	elemDisc["transport"]:set_diffusion(diffusion)
+
+    print("Created Element Discretisation for Subset ", subdom)
+
+    return elemDisc
+end
+
+
+function ProblemDisc:CreateDomainDisc(approxSpace)
+	domainDisc = DomainDiscretization(approxSpace)
+
+    local myCompositeGauge = CompositeUserNumber(false)
+    local myCompositeFlux = CompositeUserVector(false)
+    local myCompositeStorage = CompositeUserNumber(false)
+    local myCompositeConductivity = CompositeUserNumber(false)
+
+    for i,medium in ipairs(self.problem.medium) do -- for all media
+        local elemDisc = nil
+
+        for j, subset in ipairs(medium.subsets) do
+            elemDisc = ProblemDisc:CreateElemDisc(subset, medium)
+
+            domainDisc:add(elemDisc["flow"])
+            domainDisc:add(elemDisc["transport"])
+
+            --local si = domain:subset_handler():get_subset_index(mySubset)
+            --myCompositeGauge:add(si, elemDisc:value())
+            --myCompositeFlux:add(si, elemDisc:get_flux_data())
+            --myCompositeStorage:add(si, elemDisc:get_storage_data())
+            --myCompositeConductivity:add(si, elemDisc:get_conductivity_data())
+        end
+    end
+
+    --vtkOutput:select_element(myCompositeGauge, "gauge");
+    --vtkOutput:select_element(myCompositeFlux, "flux");
+    --vtkOutput:select_element(myCompositeStorage, "storage");
+    --vtkOutput:select_element(myCompositeConductivity, "conductivity");
+
+    -- Create Boundary Conditions
+    dirichletBnd = DirichletBoundary()
+    for i, v in ipairs(self.problem.boundary_conditions) do
+        if v.type == "dirichlet" then
+            dirichletBnd:add(v.value, v.cmp, v.bnd)
+        end
+    end
+
+    domainDisc:add(dirichletBnd)
+
+
+    print("Created Domain Discretisation")
+    self.domainDisc = domainDisc
+    return domainDisc
+end
+
+function ProblemDisc:CreateModelMap(paramDesc)
+    modelMap = {}
+    for i, medium in ipairs(paramDesc) do
+        if medium.type == "vanGenuchten" then
+            modelMap[medium.uid] = CreateVanGenuchtenModel(json.encode(medium))
+        elseif medium.type == "const" then
+            modelMap[medium.uid] = medium.value
+        elseif medium.type == "exp" then
+            modelMap[medium.uid] = medium
+        end
+    end
+    return modelMap
+end
+
+function util.unsat.SetInitialData(problemDesc, u)
+  for index,myInitial in ipairs(problemDesc.initial_conditions) do
+    Interpolate(myInitial.value, u, myInitial.cmp)
+  end
 end
 
 function util.unsat.density(densDesc)   
@@ -106,50 +266,75 @@ function util.unsat.density(densDesc)
     return density
 end
 
+function ProblemDisc:conductivity(condID)
+    conductivity = nil
+    values = self.modelMap[condID]
 
-function util.unsat.saturation(satDesc)
-    local saturation = nil
-    local alpha = nil
-    local K_s = nil
-    local p_a = nil
-
-    if satDesc.type == "const" then
-        -- constant saturation
-        saturation = satDesc.value
-
-    elseif satDesc.type == "exp" then
-        local alpha = satDesc.alpha
-        local p_a = satDesc.air_pressure
-
-        function SaturationFct(p)
-            -- p is the water pressure. the pressure used by the 
-            -- exponential model should be the capillary pressure (p_c).
-            -- therefore the case p_a (air pressure) - p_w (water pressure) < 0
-            -- needs to be handled
-            p_c = p_a - p
-            if p_c < 0 then
-                return 1
-            else
-                return K_sat * math.exp(alpha * p)
+    if type(values) == "userdata" then -- not the prettiest solution. this should be reworked
+        conductivity = RichardsConductivity(modelMap[condID])
+    elseif type(values) == "table" then
+        if values.type == "exp" then
+            local alpha = values.alpha
+            local thetaS = values.thetaS
+            local thetaR = values.thetaR
+            function ConductivityFct(p)
+                if p < 0 then
+                    return 1
+                else
+                    return thetaR + (thetaS - thetaR) * math.exp(alpha * p)
+                end
             end
-        end
 
-        function dpSaturationFct(p)
-            p_c = p_a - p
-            if p_c < 0 then
-                return 0
-            else
-                return K_sat * alpha * math.exp(alpha * p)
+            function dpConductivityFct(p)
+                if p < 0 then
+                    return 0
+                else
+                    return (thetaS - thetaR) * alpha * math.exp(alpha * p)
+                end
             end
-        end
 
-        saturation = LuaUserFunctionNumber("SaturationFct", 1)
-        saturation:set_deriv(0, "dpSaturationFct")
+            conductivity = LuaUserFunctionNumber("ConductivityFct", 1)
+            conductivity:set_deriv(0, "dpConductivityFct")
+        end
+    end
+    return conductivity
+
+end
+
+function ProblemDisc:saturation(satID)
+    saturation = nil
+    values = self.modelMap[satID]
+
+    if type(values) == "userdata" then
+        saturation = RichardsSaturation(modelMap[satID])
+    elseif type(values) == "table" then
+        if values.type == "exp" then
+            local alpha = values.alpha
+            local K_sat = values.K_sat
+
+            function SaturationFct(p)
+                if p < 0 then
+                    return 1
+                else
+                    return K_sat * math.exp(alpha * p)
+                end
+            end
+
+            function dpSaturationFct(p)
+                if p < 0 then
+                    return 0
+                else
+                    return K_sat * alpha * math.exp(alpha * p)
+                end
+            end
+
+            saturation = LuaUserFunctionNumber("SaturationFct", 1)
+            saturation:set_deriv(0, "dpSaturationFct")
+        end   
     end
 
     return saturation
 end
-
 
 function util.unsat.viscosity(visDesc)
     local viscosity = nil
@@ -174,211 +359,3 @@ function util.unsat.viscosity(visDesc)
 
     return viscosity
 end
-
-function util.unsat.conductivitySaturation(condDesc, satDesc, paramDesc)
-    local models = {conductivity = nil, saturation = nil}
-    modelMap = {}
-
-    for i, medium in ipairs(paramDesc) do
-    	if medium.type == "vanGenuchten" then
-    		modelMap[medium.uid] = CreateVanGenuchtenModel(json.encode(medium))
-    	end
-   	end
-
-    if condDesc.type == "vanGenuchten" then
-        models["conductivity"] = RichardsConductivity(modelMap[condDesc.value])
-    else
-        models["conductivity"] = util.unsat.conductivity(condDesc)
-    end
-
-    if satDesc.type == "vanGenuchten" then
-        models["saturation"] = RichardsSaturation(modelMap[satDesc.value])
-    else
-        models["saturation"] = util.unsat.saturation(condDesc)
-    end
-
-    return models
-end
-
--- Ansatzraum
--- Creates a approximation space for a problem
-function util.unsat.CreateApproxSpace(problem, dom)
-	-- the approximation space is created by using the ug4 functions
-	-- documentation: line 277 in /ug4/ugcore/ugbase/lib_disc/function_spaces/approximation_space.h
-	local approxSpace = ApproximationSpace(dom)
-	-- adding a linear Ansatzfunktion for the variable defined in the problem file
-	-- problem.flow.cmp[1] is the unknown variable
-	approxSpace:add_fct("p", "Lagrange", 1)
-	approxSpace:add_fct("w", "Lagrange", 1)
-	approxSpace:init_levels()
-	approxSpace:init_top_surface()
-	approxSpace:print_statistic()
-  return approxSpace
-end
-
--- Element discretisation
-function util.unsat.CreateElemDisc(subdom, densDesc, porosity, gravity, satDesc, viscDesc, permDesc, condDesc, paramDesc)
-    -- Creates the elememt discretisation for a given medium
-	local elemDisc = {}
-    -- flow equation
-	elemDisc["flow"] = ConvectionDiffusion("p", subdom, "fv1")
-	-- transport equation
-    elemDisc["salt"] = ConvectionDiffusion("w", subdom, "fv1")
-
-    density = util.unsat.density(densDesc)
-    density:set_input(0, elemDisc["salt"]:value())
-
-    viscosity = util.unsat.viscosity(viscDesc)
-    if viscDesc.type == "real" then
-        viscosity:set_input(0, elemDisc["salt"]:value())
-    end
-
-    permeability = permDesc
-
-    -- hydraulic conductivity in saturated medium
-    -- K_s = k / mu
-
-    -- the vanGenuchten model is calculated using the Richards Plugin
-    condSatModels = util.unsat.conductivitySaturation(condDesc, satDesc, paramDesc)
-    conductivity = condSatModels["conductivity"]
-    saturation = condSatModels["saturation"]
-
-    if condDesc.type == "exp" then
-        conductivity:set_input(0, elemDisc["flow"]:value())
-
-    elseif condDesc.type == "vanGenuchten" then
-        conductivity:set_capillary(-1.0 * elemDisc["flow"]:value())
-    end
-
-    if satDesc.type == "exp" then
-        saturation:set_input(0, elemDisc["flow"]:value())
-
-    elseif satDesc.type == "vanGenuchten" then
-        saturation:set_capillary(-1.0 * elemDisc["flow"]:value())
-    end
-
-    -- the permeability is multiplied by relative
-    -- hydraulic conductivity k(p)
-    hydrCond = ScaleAddLinkerMatrix()
-    hydrCond:add(conductivity, permeability)
-
-    -- Darcy Velocity
-    -- $\vec q := -k*k(p)/mu (\grad p - \rho \vec g)$
-    local DarcyVelocity = DarcyVelocityLinker()
-    DarcyVelocity:set_permeability(hydrCond)
-    DarcyVelocity:set_viscosity(viscosity)
-    DarcyVelocity:set_pressure_gradient(elemDisc["flow"]:gradient())
-    DarcyVelocity:set_density(density)
-    DarcyVelocity:set_gravity(gravity)
-	-- print("Darcy Velocity created.")
-
-	-----------------------------------------
-	-- Equation [1]
-	-----------------------------------------
-	-- flow equation
-	-- $\partial_t (\Phi \rho_w S_w) 
-	--		+ \nabla \cdot [\rho_w \vec{v}_w] = \rho_w \Gamma_w$
-
-	-- fluid storage: \Phi \rho_w S_w
-	local storage = ScaleAddLinkerNumber()
-    storage:add(porosity*density, saturation)
-
-	-- flux \rho_w \vec{v}_w
-	local fluidFlux = ScaleAddLinkerVector()
-	fluidFlux:add(density, DarcyVelocity)
-
-	elemDisc["flow"]:set_mass(storage)
-	elemDisc["flow"]:set_flux(fluidFlux)
-	elemDisc["flow"]:set_mass_scale(0.0)
-  	elemDisc["flow"]:set_diffusion(0.0)
-
-	-----------------------------------------
-	-- Equation [2]
-	-----------------------------------------
-	-- salt convection and diffusion => transport equation
-	-- $\partial_t (\Phi \rho_w S_w \omega) 
-	-- 		+ \nabla \cdot [\rho_w \omega \vec{v}_w - \rho_w D \nabla \omega] 
-	--			= \rho_w \omega \Gamma_w$
-
-	diffusion = ScaleAddLinkerMatrix()
-	diffusion:add(density, 1.0)
-
-	elemDisc["salt"]:set_mass(0.0)
-	elemDisc["salt"]:set_mass_scale(storage)
-	elemDisc["salt"]:set_velocity(fluidFlux)
-  	elemDisc["salt"]:set_diffusion(diffusion)
-
-    print("Created Element Discretisation for Subset ", subdom)
-
-    return elemDisc
-end
-
-
-function util.unsat.CreateDomainDisc(problem, approxSpace)
-	domainDisc = DomainDiscretization(approxSpace)
-
-    local myCompositeGauge = CompositeUserNumber(false)
-    local myCompositeFlux = CompositeUserVector(false)
-    local myCompositeStorage = CompositeUserNumber(false)
-    local myCompositeConductivity = CompositeUserNumber(false)
-
-    -- constructing gravity vector
-    local dim = problem.domain.dim
-    gravity = ConstUserVector(0.0)
-    gravity:set_entry(dim-1, problem.flow.gravity)
-
-    for i,medium in ipairs(problem.medium) do -- for all media
-        local mySubsetList = medium.subsets
-        local elemDisc = nil
-
-        for j, subset in ipairs(medium.subsets) do
-            elemDisc = util.unsat.CreateElemDisc(   subset,
-                                                    problem.flow.density,
-                                                    medium.porosity,
-                                                    gravity,
-                                                    medium.saturation,
-                                                    problem.flow.viscosity,
-                                                    medium.permeability,
-                                                    medium.conductivity,
-                                                    problem.parameter)
-            domainDisc:add(elemDisc["flow"])
-            domainDisc:add(elemDisc["salt"])
-
-            local si = domain:subset_handler():get_subset_index(mySubset)
-            myCompositeGauge:add(si, elemDisc:value())
-            myCompositeFlux:add(si, elemDisc:get_flux_data())
-            myCompositeStorage:add(si, elemDisc:get_storage_data())
-            myCompositeConductivity:add(si, elemDisc:get_conductivity_data())
-        end
-    end
-
-    vtkOutput:select_element(myCompositeGauge, "gauge");
-    vtkOutput:select_element(myCompositeFlux, "flux");
-    vtkOutput:select_element(myCompositeStorage, "storage");
-    vtkOutput:select_element(myCompositeConductivity, "conductivity");
-
-    -- Create Boundary Conditions
-    dirichletBnd = DirichletBoundary()
-    for i, v in ipairs(problem.boundary_conditions) do
-        if v.type == "dirichlet" then
-            dirichletBnd:add(v.value, v.cmp, v.bnd)
-        end
-    end
-
-    domainDisc:add(dirichletBnd)
-
-
-    print("Created Domain Discretisation")
-
-    return domainDisc
-
-	--TODO: Boundaries
-end
-
-
-function util.unsat.SetInitialData(problemDesc, u)
-  for index,myInitial in ipairs(problemDesc.initial_conditions) do
-    Interpolate(myInitial.value, u, myInitial.cmp)
-  end
-end
-

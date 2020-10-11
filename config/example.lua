@@ -26,6 +26,7 @@ problem =
 		{	type = "real",			-- viscosity function ["const", "real"] 
 			mu0 = 1e-3				-- [ kg m^{-3} ]	
 		},
+		air_pressure = 1013.25e2,
 	},
 
 	medium = 
@@ -33,26 +34,11 @@ problem =
 	    { 	subsets = {"CLAY"}, 
 	      	porosity = 1.0,
 			saturation = 
-			{	-- type = "const",	-- saturation function ["const", "exp", "richards"]
-				-- if "const" define value = number
-				-- if "exp" define alpha, air_pressure and K_s
-				-- if "vanGenuchten" define alpha and n
-				--alpha 			= 0.423,
-				--air_pressure 	= 1013.25e2, 	-- [Pa] constant
-				type = "vanGenuchten",
+			{	type = "vanGenuchten",
 				value = "@Silt"
 			},
 	      	conductivity =
-			{	-- type			= "exp",	-- ["const", "exp", "vanGenuchten"]
-				-- if "const" define value = number
-				-- if "exp" define alpha, air_pressure, thetaS and thetaR
-				-- if "vanGenuchten" define a parameter list then value = uid
-				alpha 			= 0.423,
-				air_pressure 	= 1013.25e2, 	-- [Pa] constant
-				thetaS 			= 0.396, 
-				thetaR 			= 0.131,
-
-				type	= "vanGenuchten", 
+			{	type	= "vanGenuchten", 
 				value 	= "@Silt"
 			},
 			diffusion		= 3.565e-6, 	-- constant
@@ -66,11 +52,8 @@ problem =
 				value = "@Silt"
 			},
 	      	conductivity	=
-			{	type			= "exp",
-				alpha 			= 0.423,
-				air_pressure 	= 1013.25e2, 	-- [Pa] constant
-				thetaS 			= 0.396, 
-				thetaR 			= 0.131,
+			{	type	= "vanGenuchten",
+				value	= "@Silt"
 			},
 			diffusion		= 3.565e-6,
 			permeability 	= 4.845e-13,
@@ -89,7 +72,7 @@ problem =
 	      type = "vanGenuchten",
 	      alpha = 0.152, n = 3.06,  
 	      thetaS = 0.446, thetaR = 0.1, 
-	      Ksat= 8.2e-4 * 1e-3,},
+	      Ksat= 8.2e-4 * 1e-3,}, 
     },
 
 	initial_conditions = 
@@ -169,31 +152,28 @@ problem =
 	}
 } 
 
-function ConcentrationDirichletBnd(x, y, t)
-	if y == 3 then
-		if (x <= 0) and (1 <= x) then
-			return 0.
-		end
-	elseif x == 2 then
-		if (y <= 0) and (1 <= y) then
-			return 1 - 1
-		end
-	else
-		return 2
-	end
+-- Some functions (sadly global...)
+
+Levee2D_tRise = levee2D.var.RiseTime
+
+-- Anstieg bis auf 5.85 m
+function Levee2D_Pegel(t) 
+  return math.min(t/Levee2D_tRise, 1.0)*5.85 
+end  
+
+-- This is a rising flood.
+function Levee2D_RisingFlood(x, z, t, si) 
+  local zPegel = Levee2D_Pegel(t)
+  if (z <zPegel) then return true, math.max(zPegel-z, 0.0) end
+  return false, 0.0
 end
 
-function PressureDirichletBnd(x, y, t)
-	return 1
+-- This is an empty levee.
+function Levee2D_HydrostaticHead(x, z, t, si) 
+  return -z
 end
 
-function ConcentrationStart(x, y, t)
-	return 1
-end
-
-function PressureStart(x, y, t)
-	return
-end
+return levee2D
 
 
 

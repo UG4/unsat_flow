@@ -61,6 +61,7 @@ local levee2D =
     { type = "real",      -- viscosity function ["const", "real"] 
       mu0 = 1e-3        -- [ kg m^{-3} ]  
     },
+    air_pressure = 1013.25e2,
   },
    medium = 
    {
@@ -101,8 +102,8 @@ local levee2D =
   {
      {cmp = "p", type = "dirichlet", bnd = "WaterBnd", value = "Levee2D_RisingFlood_p"},
      {cmp = "p", type = "dirichlet", bnd = "ToeBnd", value = 0.0 },
-     {cmp = "w", type = "dirichlet", bnd = "WaterBnd", value = 1.0},
-     {cmp = "w", type = "dirichlet", bnd = "ToeBnd", value = 0.0 },
+     {cmp = "c", type = "dirichlet", bnd = "WaterBnd", value = 1.0},
+     {cmp = "c", type = "dirichlet", bnd = "ToeBnd", value = 0.0 },
        --  {cmp = "h", type = "outflow", bnd = "AirBnd" },
 
   },

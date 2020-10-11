@@ -73,10 +73,16 @@ function problem_check(problem)
 
     function table_check(table, template)
         if table ~= nil then
-            if template["__repeatable"] == true then
+            if template["__repeatable"] == true or template["__optional"] == true then
                 for k, v in ipairs(table) do
-                    if not table_check(v, template["__values"]) then
-                        return false
+                    for j, w in ipairs(template["__values"]) do
+                        if table_check(v, w) then
+                            print(v, w)
+                            return true
+                        end
+                        if j == #template["__values"] then
+                            return false
+                        end
                     end
                 end
             else

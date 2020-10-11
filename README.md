@@ -17,7 +17,7 @@ ugshell -ex unsat_flow_app/unsat_flow_driver.lua --problem-id "example" --check
 * --problem-id specifies the problems config file, standard: "trench2D"
 * --numPreRefs specifies the number of refinements before distribution
 * --numRefs specifies the number of refinements after distribution
-* --check checks if a problem file has the correct layout, standard: false
+* --check checks if a problem file has the correct layout
 
 ## Examples
 
