@@ -77,7 +77,6 @@ function problem_check(problem)
                 for k, v in ipairs(table) do
                     for j, w in ipairs(template["__values"]) do
                         if table_check(v, w) then
-                            print(v, w)
                             return true
                         end
                         if j == #template["__values"] then
