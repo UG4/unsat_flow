@@ -58,10 +58,7 @@ template =
                     __const = {__type = "number"},
                     __exp = 
                     {
-                        alpha = {__type = "number"},
-                        air_pressure = {__type = "number"},
-                        thetaS = {__type = "number"},
-                        thetaR = {__type = "number"},
+                        value = {__type = "string"}
                     },
                     __vanGenuchten = 
                     {
@@ -78,24 +75,17 @@ template =
         __values = 
         {
             {   uid = {__type = "string"}, 
-                type = {__type = {"vanGenuchten"}},
+                type = {__type = {"vanGenuchten", "exp"}},
                 thetaS = {__type = "number"}, 
                 thetaR = {__type = "number"},
                 alpha = {__type = "number"}, 
                 n = {__type = "number"}, 
-                Ksat= {__type = "number"},
+                -- optional
+                -- Ksat= {__type = "number"},
             },
             {   uid = {__type = "string"},
                 type = {__type = {"const"}},
                 value = {__type = "number"},
-            },
-            {   uid = {__type = "string"}, 
-                type = {__type = {"exp"}},
-                thetaS = {__type = "number"}, 
-                thetaR = {__type = "number"},
-                alpha = {__type = "number"}, 
-                n = {__type = "number"}, 
-                Ksat= {__type = "number"},
             },
         },
     },
@@ -120,4 +110,36 @@ template =
             },
         },
     },
+
+    solverConfig = {
+        solver = {
+            __deftypes = true,
+            __type = {"newton", "limex"},
+            __newton = {
+                maxSteps = {__type = "number"},
+                minDef = {__type = "number"},
+                reduction = {__type = "number"},
+                -- optional are: 
+                -- verbose = {__type = "bool"}
+                -- LineSearchVerbose = {__type = "bool"}
+                -- both are normaly false
+            },
+        },
+        linSolver = {
+            __deftypes = true,
+            __type = {"standard", "gmg", "bicgstab"},
+            __standard = {},
+            __gmg = {
+                maxSteps = {__type = "number"},
+                minDef = {__type = "number"},
+                reduction = {__type = "number"},
+                },
+            __bicgstab = {
+                maxSteps = {__type = "number"},
+                minDef = {__type = "number"},
+                reduction = {__type = "number"},
+                },
+            }
+    
+  },
 }

@@ -18,6 +18,7 @@ ugshell -ex unsat_flow_app/unsat_flow_driver.lua --problem-id "example" --check
 * --numPreRefs specifies the number of refinements before distribution
 * --numRefs specifies the number of refinements after distribution
 * --check checks if a problem file has the correct layout
+* -o: outfile name prefix, standard: problem ID
 
 ## Examples
 

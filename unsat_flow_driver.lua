@@ -11,8 +11,9 @@ ug_load_script("/unsat_flow_util.lua")
 ARGS = {
   problemID = util.GetParam("--problem-id", "trench2D"),
   numPreRefs = util.GetParamNumber("--numPreRefs", 1, "number of refinements before parallel distribution"),
-  numRefs = util.GetParamNumber("--num-refs", 2, "number of refinements after parallel distribution"),
-  check = util.HasParamOption("--check", false, "checks if the config file has the correct layout")
+  numRefs = util.GetParamNumber("--numRefs", 2, "number of refinements after parallel distribution"),
+  check = util.HasParamOption("--check", false, "checks if the config file has the correct layout"),
+  outFileNamePrefix = util.GetParam("-o", "unsat_"),
   }
 
 util.CheckAndPrintHelp("unsaturated density flow problem");
@@ -43,7 +44,6 @@ disc = ProblemDisc:new(problem, dom, vtk)
 
 -- create approximation space.
 approxSpace = disc:CreateApproxSpace()
-print(approxSpace)
 
 -- Index ordering
 OrderCuthillMcKee(approxSpace, true);
@@ -51,26 +51,12 @@ OrderCuthillMcKee(approxSpace, true);
 -- Creating the Domain discretisation for the problem
 domainDisc = disc:CreateDomainDisc(approxSpace)
 
--- Solver Config
-
+-- Initial Data
 u = GridFunction(approxSpace)
-util.unsat.SetInitialData(problem, u)
+disc:SetInitialData(u)
 
-
-linSolver = LU()
-
-newtonConvCheck = ConvCheck()
-newtonConvCheck:set_maximum_steps(10)
-newtonConvCheck:set_minimum_defect(5e-8)
-newtonConvCheck:set_reduction(1e-10)
-newtonConvCheck:set_verbose(true)
-
-newtonLineSearch = StandardLineSearch()
-
-newtonSolver = NewtonSolver()
-newtonSolver:set_linear_solver(linSolver)
-newtonSolver:set_convergence_check(newtonConvCheck)
-newtonSolver:set_line_search(newtonLineSearch)
+-- Solver Config
+solver = disc:CreateSolver()
 
 -- Time stepping parameters
 local endTime = problem.time.stop
@@ -79,10 +65,7 @@ local dtMin = problem.time.dtmin
 local dtMax = 1e-1*endTime  -- at least 10%
 local TOL = problem.time.tol or ARGS.limexTOL
 
--- since solver configurations can be quite complex, we print the configuration:
-print("NewtonSolver configuration:")
-print(newtonSolver:config_string())
+util.SolveNonlinearTimeProblem(u, domainDisc, solver, vtk, ARGS.outFileNamePrefix,
+"ImplEuler", 1.0, 0.0,  endTime, dt, dtMin, 0.5)
 
-newtonConvCheck:set_maximum_steps(100)
-util.SolveNonlinearTimeProblem(u, domainDisc, newtonSolver, vtk, "Newton",
-"ImplEuler", 1.0, 0.0,  dt, dt, dtMin, 0.5)
+vtk:print(filename, u, step, time)
