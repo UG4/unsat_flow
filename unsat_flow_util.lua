@@ -53,6 +53,7 @@ function ProblemDisc:CreateElemDisc(subdom, medium)
     -- Creates the elememt discretisation for a given medium
 	elemDisc = {}
     -- flow equation
+    print(self.cmp[1], self.cmp[2])
 	elemDisc["flow"] = ConvectionDiffusion(self.cmp[1], subdom, "fv1")
 	-- transport equation
     elemDisc["transport"] = ConvectionDiffusion(self.cmp[2], subdom, "fv1")
@@ -75,20 +76,20 @@ function ProblemDisc:CreateElemDisc(subdom, medium)
     local conductivity = ProblemDisc:conductivity(medium.conductivity.value)
     local saturation = ProblemDisc:saturation(medium.saturation.value)
 
-    capillary = 1 - elemDisc["flow"]:value()
+    capillary = -1.0 * elemDisc["flow"]:value()
 
     if medium.conductivity.type == "exp" then
         conductivity:set_input(0, capillary)
 
     elseif medium.conductivity.type == "vanGenuchten" then
-        conductivity:set_capillary(-1.0 * capillary)
+        conductivity:set_capillary(capillary)
     end
 
     if medium.saturation.type == "exp" then
         saturation:set_input(0, capillary)
 
     elseif medium.saturation.type == "vanGenuchten" then
-        saturation:set_capillary(-1.0 * capillary)
+        saturation:set_capillary(capillary)
     end
 
     -- the permeability is multiplied by relative
@@ -128,7 +129,7 @@ function ProblemDisc:CreateElemDisc(subdom, medium)
 	elemDisc["flow"]:set_mass(storage)
 	elemDisc["flow"]:set_flux(fluidFlux)
 	elemDisc["flow"]:set_mass_scale(0.0)
-  	elemDisc["flow"]:set_diffusion(diffusion)
+  	elemDisc["flow"]:set_diffusion(0.0)
 
 	-----------------------------------------
 	-- Equation [2]
@@ -146,11 +147,13 @@ function ProblemDisc:CreateElemDisc(subdom, medium)
     print("Created Element Discretisation for Subset ", subdom)
 
     -- vtk output values
+    self.vtk:select(density, "Density")
     self.vtk:select(storage, "Storage")
     self.vtk:select(DarcyVelocity, "DarcyVelocity")
     self.vtk:select(fluidFlux, "Flux")
     self.vtk:select(saturation, "Saturation")
     self.vtk:select(conductivity, "Conductivity")
+    self.vtk:select(capillary, "Capillary Pressure")
     self.vtk:select_nodal("c", "Concentration")
     self.vtk:select_nodal("p", "Pressure")
 
@@ -212,6 +215,7 @@ end
 function ProblemDisc:density(densDesc)   
     local p_w = self.problem.flow.density.min
     local p_s = self.problem.flow.density.max
+    local w_max = self.problem.flow.density.w_max
     local density = nil
     
     -- p_s: max density -> saline
@@ -220,7 +224,7 @@ function ProblemDisc:density(densDesc)
     if self.problem.flow.density.type == "linear" then
         -- linear density function
         function DensityFct(w)
-            return p_w + (p_s - p_w) * (w)
+            return p_w + (p_s - p_w) * (w/w_max)
         end
 
         function dwDensityFct(w)
@@ -246,11 +250,12 @@ function ProblemDisc:density(densDesc)
     elseif self.problem.flow.density.type == "ideal" then
         -- ideal density function
         function DensityFct(w)
-            return 1/(1/p_s + w/((p_w - p_s)))
+            --print("Konzentration: ", w, " Dichte: ", 1/(1/p_w + (1/p_s - 1/p_w) * (w/w_max)))
+            return 1/(1/p_w + (1/p_s - 1/p_w) * (w/w_max))
         end
 
         function dwDensityFct(w)
-            return (p_w - p_s)
+            return (w_max * p_s * (w_max * p_s - w^2))/(w_max * p_s + w * (-1.0 * p_s + w))^2
         end
 
         density = LuaUserFunctionNumber("DensityFct", 1);

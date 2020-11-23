@@ -30,7 +30,7 @@ local trench2D =
   flow = 
   {
     type = "haline",
-    cmp = {"c", "p"},
+    cmp = {"p", "c"},
 
     gravity = trench2Dg,    -- [ m s^{-2}�] ("standard", "no" or numeric value) 
     density =           

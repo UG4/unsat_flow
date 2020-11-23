@@ -46,7 +46,7 @@ disc = ProblemDisc:new(problem, dom, vtk)
 approxSpace = disc:CreateApproxSpace()
 
 -- Index ordering
-OrderCuthillMcKee(approxSpace, true);
+-- OrderCuthillMcKee(approxSpace, true);
 
 -- Creating the Domain discretisation for the problem
 domainDisc = disc:CreateDomainDisc(approxSpace)
@@ -67,5 +67,3 @@ local TOL = problem.time.tol or ARGS.limexTOL
 
 util.SolveNonlinearTimeProblem(u, domainDisc, solver, vtk, ARGS.outFileNamePrefix,
 "ImplEuler", 1.0, 0.0,  endTime, dt, dtMin, 0.5)
-
-vtk:print(filename, u, step, time)
