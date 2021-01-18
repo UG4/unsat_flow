@@ -59,12 +59,8 @@ function ProblemDisc:CreateElemDisc(subdom, medium)
     elemDisc["transport"] = ConvectionDiffusion(self.cmp[2], subdom, "fv1")
 
     density = ProblemDisc:density()
-    density:set_input(0, elemDisc["transport"]:value())
 
     viscosity = ProblemDisc:viscosity(self.problem.flow.viscosity)
-    if self.problem.flow.viscosity.type == "real" then
-        viscosity:set_input(0, elemDisc["transport"]:value())
-    end
 
     permeability = medium.permeability
 
@@ -75,22 +71,6 @@ function ProblemDisc:CreateElemDisc(subdom, medium)
     -- the vanGenuchten model is calculated using the Richards Plugin
     local conductivity = ProblemDisc:conductivity(medium.conductivity.value)
     local saturation = ProblemDisc:saturation(medium.saturation.value)
-
-    capillary = -1.0 * elemDisc["flow"]:value()
-
-    if medium.conductivity.type == "exp" then
-        conductivity:set_input(0, capillary)
-
-    elseif medium.conductivity.type == "vanGenuchten" then
-        conductivity:set_capillary(capillary)
-    end
-
-    if medium.saturation.type == "exp" then
-        saturation:set_input(0, capillary)
-
-    elseif medium.saturation.type == "vanGenuchten" then
-        saturation:set_capillary(capillary)
-    end
 
     -- the permeability is multiplied by relative
     -- hydraulic conductivity k(p)
@@ -142,9 +122,35 @@ function ProblemDisc:CreateElemDisc(subdom, medium)
 	elemDisc["transport"]:set_mass(0.0)
 	elemDisc["transport"]:set_mass_scale(storage)
 	elemDisc["transport"]:set_velocity(fluidFlux)
-  	elemDisc["transport"]:set_diffusion(diffusion)
+    elemDisc["transport"]:set_diffusion(diffusion)
+
+
+    -- setting inputs
+    density:set_input(0, elemDisc["transport"]:value())
+
+    if self.problem.flow.viscosity.type == "real" then
+        viscosity:set_input(0, elemDisc["transport"]:value())
+    end
+
+    capillary = -1.0 * elemDisc["flow"]:value()
+
+    if medium.conductivity.type == "exp" then
+        conductivity:set_input(0, capillary)
+
+    elseif medium.conductivity.type == "vanGenuchten" then
+        conductivity:set_capillary(capillary)
+    end
+
+    if medium.saturation.type == "exp" then
+        saturation:set_input(0, capillary)
+
+    elseif medium.saturation.type == "vanGenuchten" then
+        saturation:set_capillary(capillary)
+    end
+
 
     print("Created Element Discretisation for Subset ", subdom)
+
 
     -- vtk output values
     self.vtk:select(density, "Density")
@@ -179,9 +185,10 @@ function ProblemDisc:CreateDomainDisc(approxSpace)
 
     -- Create Boundary Conditions
     dirichletBnd = DirichletBoundary()
-    for i, v in ipairs(self.problem.boundary_conditions) do
+    for i, v in ipairs(self.problem.boundary) do
         if v.type == "dirichlet" then
             dirichletBnd:add(v.value, v.cmp, v.bnd)
+            print("Added Dirichlet Boundary with value " .. v.value .. " for " .. v.cmp .. " on subset " .. v.bnd)
         end
     end
 
@@ -207,7 +214,7 @@ function ProblemDisc:CreateModelMap(paramDesc)
 end
 
 function ProblemDisc:SetInitialData(u)
-  for i, initial in ipairs(self.problem.initial_conditions) do
+  for i, initial in ipairs(self.problem.initial) do
     Interpolate(initial.value, u, initial.cmp)
   end
 end
@@ -228,7 +235,7 @@ function ProblemDisc:density(densDesc)
         end
 
         function dwDensityFct(w)
-            return (p_s - p_w)
+            return (p_s - p_w) / w_max
         end
 
         density = LuaUserFunctionNumber("DensityFct", 1);
@@ -237,11 +244,11 @@ function ProblemDisc:density(densDesc)
     elseif self.problem.flow.density.type == "exp" then
         -- exponential density function
         function DensityFct(w)
-            return p_s * (p_w / p_s)^(w)
+            return p_w * (p_s / p_w)^(w/w_max)
         end
 
         function dwDensityFct(w)
-            return (p_s * (p_w / p_s)^(w) * math.log(p_w / p_s))
+            return (p_w * (p_s / p_w)^(w/w_max) * math.log(p_s / p_w)) / w_max
         end
 
         density = LuaUserFunctionNumber("DensityFct", 1);
@@ -364,66 +371,4 @@ function ProblemDisc:viscosity(visDesc)
     end
 
     return viscosity
-end
-
-function ProblemDisc:CreateSolver()
-    linSolver = nil
-    config = self.problem.solverConfig
-    if config.linSolver.type == "standard" then
-        linSolver = LU()
-    else
-        gmg = GeometricMultiGrid(approxSpace)
-        gmg:set_base_solver(LU())
-        gmg:set_gathered_base_solver_if_ambiguous(true)
-        gmg:set_smoother(ILU())
-        linConvCheck = ConvCheck(60, 1e-8, 1e-8)
-        linConvCheck:set_maximum_steps(config.linSolver.maxSteps)
-        linConvCheck:set_minimum_defect(config.linSolver.minDef)
-        linConvCheck:set_reduction(config.linSolver.reduction)
-        if config.linSolver.ConvCheckVerbose then
-            linConvCheck:set_verbose(true)
-        else
-            linConvCheck:set_verbose(false)
-        end
-
-        if config.linSolver.type == "gmg" then
-            linSolver = LinearSolver()
-        elseif config.linSolver.type == "bicgstab" then
-            linSolver = BiCGStab()
-        end
-
-        linSolver:set_preconditioner(gmg)
-        linSolver:set_convergence_check(linConvCheck)
-    end
-
-    solver = nil
-    if config.solver.type == "newton" then
-        newtonConvCheck = ConvCheck()
-        newtonConvCheck:set_maximum_steps(config.solver.maxSteps)
-        newtonConvCheck:set_minimum_defect(config.solver.minDef)
-        newtonConvCheck:set_reduction(config.solver.reduction)
-        if config.solver.verbose then
-            newtonConvCheck:set_verbose(true)
-        else
-            newtonConvCheck:set_verbose(false)
-        end
-
-        newtonLineSearch = StandardLineSearch()
-        if config.solver.LineSearchVerbose then
-            newtonLineSearch:set_verbose(true)
-        else
-            newtonLineSearch:set_verbose(false)
-        end
-
-        solver = NewtonSolver()
-        solver:set_linear_solver(linSolver)
-        solver:set_convergence_check(newtonConvCheck)
-        solver:set_line_search(newtonLineSearch)
-
-        print("NewtonSolver configuration:")
-        print(solver:config_string())
-
-    -- limex config?
-    end
-    return solver
 end
