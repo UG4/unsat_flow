@@ -215,6 +215,7 @@ end
 
 function ProblemDisc:SetInitialData(u)
   for i, initial in ipairs(self.problem.initial) do
+    print("initial : " .. initial.cmp .. " = " .. initial.value)
     Interpolate(initial.value, u, initial.cmp)
   end
 end

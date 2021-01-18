@@ -85,8 +85,8 @@ local henry =
   {
     { cmp = "c", type = "dirichlet", bnd = "Inflow", value = 0.0 },
     { cmp = "c", type = "dirichlet", bnd = "Sea", value = 1.0 },
-    { cmp = "p", type = "dirichlet", bnd = "Sea", value = "HydroPressure" },
-    { cmp = "p", type = "dirichlet", bnd = "Top", value = 0.0 }, -- if the FS intersects the top
+    { cmp = "p", type = "dirichlet", bnd = "Sea", value = "HydroPressure_bnd" },
+    --{ cmp = "p", type = "dirichlet", bnd = "Top", value = 0.0 }, -- if the FS intersects the top
     { cmp = "c", type = "dirichlet", bnd = "Top", value = 0.0 } -- if the FS intersects the top
 
   },
@@ -105,7 +105,7 @@ local henry =
 
       convCheck = {
           type		= "standard",
-          iterations	= 128,			-- number of iterations
+          iterations	= 10,			-- number of iterations
           absolute	= 1e-8,			-- absolut value of defact to be reached; usually 1e-6 - 1e-9
           reduction	= 1e-7,		-- reduction factor of defect to be reached; usually 1e-6 - 1e-7
           verbose		= true			-- print convergence rates if true
@@ -142,14 +142,25 @@ local henry =
       stop	= 100000,			-- [s]  end time point
       max_time_steps = 1000,		-- [1]	maximum number of time steps
       dt		= ARGS.dt,		-- [s]  initial time step
-      dtmin	= 0.01 * ARGS.dt,	-- [s]  minimal time step
+      dtmin	= 0.00001 * ARGS.dt,	-- [s]  minimal time step
       dtmax	= 10 * ARGS.dt,	-- [s]  maximal time step
       dtred	= 0.1,				-- [1]  reduction factor for time step
       tol 	= 1e-2,
   },
 }
 
-function HydroPressure(x,y) return -10055.25 * (y + params.fs_depth) end
+function HydroPressure_bnd(x, y, t, si) 
+  p = HydroPressure(x, y)
+  if p < 0 then
+    return false, 0
+  else
+    return true, p
+  end
+end
+
+function HydroPressure(x, y) 
+  return -10055.25 * (y + params.fs_depth)
+end
 
 return henry
 

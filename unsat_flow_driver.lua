@@ -19,7 +19,8 @@ ARGS =
   numRefs           = util.GetParamNumber("--numRefs", 2, "number of refinements after parallel distribution"),
   check             = util.HasParamOption("--check", false, "checks if the config file has the correct layout"),
   outFileNamePrefix = util.GetParam("-o", "unsat_"),
-  dt			          = util.GetParamNumber("-dt", 1) -- time step length
+  dt			          = util.GetParamNumber("-dt", 1), -- time step length
+  newton            = util.HasParamOption("--newton", false),
 }
 
 local problem = require(ARGS.problemID)
@@ -52,13 +53,95 @@ util.solver.defaults.approxSpace	= approxSpace
 solver = util.solver.CreateSolver(problem.solver)
 print(solver:config_string())
 
-
 -- Time stepping parameters
+local startTime = problem.time.start
 local endTime = problem.time.stop
 local dt   = problem.time.dt
 local dtMin = problem.time.dtmin
-local dtMax = problem.time.dtmax  -- at least 10%
+local dtMax = problem.time.dtmax
 local TOL = problem.time.tol
+local dtred = problem.time.dtred
 
+if ARGS.newton then
 util.SolveNonlinearTimeProblem(u, domainDisc, solver, vtk, ARGS.outFileNamePrefix,
-"ImplEuler", 1.0, 0.0,  endTime, dt, dtMin, 0.5)
+"ImplEuler", 1.0, startTime, endTime, dt, dtMin, dtred)
+else
+
+-- LIMEX time-stepping
+
+  -- Solvers config.
+  local limexLSolver = {}
+  local limexNLSolver = {}
+
+  local limexConvCheck=ConvCheck(1, 1e-12, 1e-10, true)
+  limexConvCheck:set_supress_unsuccessful(true)
+
+  --local lsolveCheck = ConvCheck(1000, 1e-12, 1e-10)
+  local nstages = 2
+
+  for i=1,nstages do
+    limexLSolver[i] = util.solver.CreateSolver(problem.solver.linSolver)
+    --limexLSolver[i]:set_convergence_check(lsolveCheck)
+
+    limexNLSolver[i] = NewtonSolver()
+    limexNLSolver[i]:set_linear_solver(limexLSolver[i])
+    limexNLSolver[i]:set_convergence_check(limexConvCheck)
+  end
+
+  -- Setup for time integrator
+  local limex = LimexTimeIntegrator(nstages)
+  for i=1,nstages do
+    limex:add_stage(i, limexNLSolver[i], domainDisc )
+  end
+
+  -- local concErrorEst = Norm2Estimator()
+  local metricSpace = H1SemiComponentSpace(problem.flow.cmp[2]) -- L2ComponentSpace("h")
+  local concErrorEst = CompositeGridFunctionEstimator()
+  concErrorEst:add(metricSpace)
+
+  limex:add_error_estimator(concErrorEst)
+  limex:set_tolerance(1e-2)
+  limex:set_stepsize_safety_factor(0.8)
+  limex:set_time_step(problem.time.dt)
+  limex:set_dt_min(problem.time.dtmin)
+  limex:set_dt_max(problem.time.dtmax)
+  limex:set_increase_factor(1000.0)
+  --limex:enable_matrix_cache()
+   limex:disable_matrix_cache()
+
+ -- Debugging LIMEX. 
+  local dbgWriter = GridFunctionDebugWriter(approxSpace)
+  if (true) then
+    limex:set_debug(dbgWriter)
+    limex:set_debug_for_timestepper(dbgWriter)
+    limexNLSolver[1]:set_debug(dbgWriter)
+  end
+
+  -- Time step observer.
+  local vtkobserver = VTKOutputObserver("LIMEX_"..ARGS.problemID..".vtk", vtk)
+  limex:attach_observer(vtkobserver)
+  
+  --[[
+    if (problem.step_post_processing) then
+    local luaobserver = LuaCallbackObserver()
+  
+  local stepClock = CuckooClock()
+  
+  function MyLuaCallback(step, time, currdt)
+    print ("Time per step :"..stepClock:toc()) -- get time for last step 
+    local usol=luaobserver:get_current_solution()
+    myProblem:step_post_processing(usol, step, time)
+    stepClock:tic() -- reset timing
+    return 0;
+ end
+  
+  luaobserver:set_callback("MyLuaCallback")
+  limex:attach_observer(luaobserver)
+ end
+ --]]
+
+
+  -- Solve problem.
+  limexConvCheck:set_minimum_defect(3e-7)
+  limex:apply(u, endTime, u, 0.0)
+end
