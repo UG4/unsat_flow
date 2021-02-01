@@ -1,7 +1,9 @@
 -- author: Niklas Conen
 
 -- utility functions for unsaturated density flow equations
--- problems are defined in the config file
+-- problems are defined using config files
+
+ug_load_script("ug_util.lua")
 
 -- namespace creation
 util.unsat = util.unsat or {}
@@ -12,7 +14,7 @@ local json = require("json")
 -- Domain Discretisation
 ProblemDisc = {}
 
-function ProblemDisc:new(problemDesc, dom, vtk)
+function ProblemDisc:new(problemDesc, dom)
     assert(problemDesc, "No Input defined")
     problemObj = {}
     setmetatable(problemObj, self)
@@ -20,10 +22,8 @@ function ProblemDisc:new(problemDesc, dom, vtk)
 
     self.problem = problemDesc
     self.domain = dom
-    self.vtk = vtk
     self.cmp = problemDesc.flow.cmp
     self.approxSpace = nil
-    self.ElemDisc = nil
     self.domainDisc = nil
 
     self.gravity = ConstUserVector(0.0)
@@ -33,6 +33,7 @@ function ProblemDisc:new(problemDesc, dom, vtk)
     if problemDesc.parameter ~= nil then
         self.modelMap = ProblemDisc:CreateModelMap(problemDesc.parameter)
     end
+
     return problemObj
 end
 
@@ -45,7 +46,7 @@ function ProblemDisc:CreateApproxSpace()
     approxSpace:init_top_surface()
     approxSpace:print_statistic()
     self.approxSpace = approxSpace
-  return approxSpace
+    return approxSpace
 end
 
 -- Element discretisation
@@ -53,7 +54,6 @@ function ProblemDisc:CreateElemDisc(subdom, medium)
     -- Creates the elememt discretisation for a given medium
 	elemDisc = {}
     -- flow equation
-    print(self.cmp[1], self.cmp[2])
 	elemDisc["flow"] = ConvectionDiffusion(self.cmp[1], subdom, "fv1")
 	-- transport equation
     elemDisc["transport"] = ConvectionDiffusion(self.cmp[2], subdom, "fv1")
@@ -151,8 +151,7 @@ function ProblemDisc:CreateElemDisc(subdom, medium)
 
     print("Created Element Discretisation for Subset ", subdom)
 
-
-    -- vtk output values
+    --[[
     self.vtk:select(density, "Density")
     self.vtk:select(storage, "Storage")
     self.vtk:select(DarcyVelocity, "DarcyVelocity")
@@ -160,16 +159,14 @@ function ProblemDisc:CreateElemDisc(subdom, medium)
     self.vtk:select(saturation, "Saturation")
     self.vtk:select(conductivity, "Conductivity")
     self.vtk:select(capillary, "Capillary Pressure")
-    self.vtk:select_nodal("c", "Concentration")
-    self.vtk:select_nodal("p", "Pressure")
-
+    ]]--
 
     return elemDisc
 end
 
 
 function ProblemDisc:CreateDomainDisc(approxSpace)
-	domainDisc = DomainDiscretization(approxSpace)
+    domainDisc = DomainDiscretization(approxSpace)
 
     for i,medium in ipairs(self.problem.medium) do -- for all media
         local elemDisc = nil
@@ -181,7 +178,6 @@ function ProblemDisc:CreateDomainDisc(approxSpace)
             domainDisc:add(elemDisc["transport"])
         end
     end
-
 
     -- Create Boundary Conditions
     dirichletBnd = DirichletBoundary()
@@ -199,6 +195,24 @@ function ProblemDisc:CreateDomainDisc(approxSpace)
     return domainDisc
 end
 
+
+function ProblemDisc:CreateVTKOutput()
+    -- generating the vtk output
+    -- for future reference; util.Balance(plotdata)
+
+    for i, v in ipairs(self.problem.output.data) do
+        if v == "p" or v == "c" then
+            vtk:select(GridFunctionNumberData(self.u, v), v)
+        else if v == "q" then
+            vtk:select(GridFunctionNumberData(self.u, v), v)
+        end
+    end
+
+    table.insert(plotdata, vtk)
+    return 
+end
+
+
 function ProblemDisc:CreateModelMap(paramDesc)
     modelMap = {}
     for i, medium in ipairs(paramDesc) do
@@ -213,11 +227,12 @@ function ProblemDisc:CreateModelMap(paramDesc)
     return modelMap
 end
 
-function ProblemDisc:SetInitialData(u)
-  for i, initial in ipairs(self.problem.initial) do
-    print("initial : " .. initial.cmp .. " = " .. initial.value)
-    Interpolate(initial.value, u, initial.cmp)
-  end
+function ProblemDisc:SetInitialData()
+    print(self.u)
+    for i, initial in ipairs(self.problem.initial) do
+        print("initial : " .. initial.cmp .. " = " .. initial.value)
+        Interpolate(initial.value, self.u, initial.cmp)
+    end
 end
 
 function ProblemDisc:density(densDesc)   
@@ -258,7 +273,6 @@ function ProblemDisc:density(densDesc)
     elseif self.problem.flow.density.type == "ideal" then
         -- ideal density function
         function DensityFct(w)
-            --print("Konzentration: ", w, " Dichte: ", 1/(1/p_w + (1/p_s - 1/p_w) * (w/w_max)))
             return 1/(1/p_w + (1/p_s - 1/p_w) * (w/w_max))
         end
 

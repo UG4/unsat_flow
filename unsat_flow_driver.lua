@@ -19,21 +19,19 @@ ARGS =
   numRefs           = util.GetParamNumber("--numRefs", 2, "number of refinements after parallel distribution"),
   check             = util.HasParamOption("--check", false, "checks if the config file has the correct layout"),
   outFileNamePrefix = util.GetParam("-o", "unsat_"),
-  dt			          = util.GetParamNumber("-dt", 1), -- time step length
+  dt			          = util.GetParamNumber("-dt", 0.01), -- time step length
   newton            = util.HasParamOption("--newton", false),
 }
 
 local problem = require(ARGS.problemID)
 InitUG(problem.domain.dim, AlgebraType("CPU", 1))
 
-local vtk = VTKOutput()
-
 local dom = util.CreateAndDistributeDomain(problem.domain.grid, ARGS.numRefs, ARGS.numPreRefs,  {})
 
 -- saves the refined grid
 -- SaveGridHierarchyTransformed(dom:grid(), dom:subset_handler(), "refined.ugx", 0.1)
 
-disc = ProblemDisc:new(problem, dom, vtk)
+disc = ProblemDisc:new(problem, dom)
 
 -- create approximation space.
 approxSpace = disc:CreateApproxSpace()
@@ -41,12 +39,21 @@ approxSpace = disc:CreateApproxSpace()
 -- Index ordering
 -- OrderCuthillMcKee(approxSpace, true);
 
+disc.u = GridFunction(approxSpace)
+
 -- Creating the Domain discretisation for the problem
 domainDisc = disc:CreateDomainDisc(approxSpace)
 
+-- vtk output function
+print(disc.u)
+disc.OutputFct = disc:CreateOutputFct()
+disc.vtk = VTKOutput()
+disc.vtk:select(GridFunctionNumberData(disc.u, "p"), "p")
+disc.vtk:select(GridFunctionNumberData(disc.u, "c"), "c")
+print("Created VTK Output")
+
 -- Initial Data
-u = GridFunction(approxSpace)
-disc:SetInitialData(u)
+disc:SetInitialData(disc.u)
 
 -- Solver Config
 util.solver.defaults.approxSpace	= approxSpace
@@ -62,8 +69,10 @@ local dtMax = problem.time.dtmax
 local TOL = problem.time.tol
 local dtred = problem.time.dtred
 
+--exit()
+
 if ARGS.newton then
-util.SolveNonlinearTimeProblem(u, domainDisc, solver, vtk, ARGS.outFileNamePrefix,
+util.SolveNonlinearTimeProblem(disc.u, domainDisc, solver, disc.vtk, ARGS.outFileNamePrefix,
 "ImplEuler", 1.0, startTime, endTime, dt, dtMin, dtred)
 else
 
@@ -118,7 +127,7 @@ else
   end
 
   -- Time step observer.
-  local vtkobserver = VTKOutputObserver("LIMEX_"..ARGS.problemID..".vtk", vtk)
+  local vtkobserver = VTKOutputObserver("LIMEX_"..ARGS.problemID..".vtk", disc.vtk)
   limex:attach_observer(vtkobserver)
   
   --[[
@@ -143,5 +152,5 @@ else
 
   -- Solve problem.
   limexConvCheck:set_minimum_defect(3e-7)
-  limex:apply(u, endTime, u, 0.0)
+  limex:apply(disc.u, endTime, disc.u, 0.0)
 end

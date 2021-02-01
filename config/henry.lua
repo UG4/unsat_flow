@@ -83,11 +83,11 @@ local henry =
 
   boundary = 
   {
-    { cmp = "c", type = "dirichlet", bnd = "Inflow", value = 0.0 },
-    { cmp = "c", type = "dirichlet", bnd = "Sea", value = 1.0 },
+    -- { cmp = "c", type = "dirichlet", bnd = "Inflow", value = 0.0 },
+    { cmp = "c", type = "dirichlet", bnd = "Sea", value = 0.0 },
     { cmp = "p", type = "dirichlet", bnd = "Sea", value = "HydroPressure_bnd" },
-    --{ cmp = "p", type = "dirichlet", bnd = "Top", value = 0.0 }, -- if the FS intersects the top
-    { cmp = "c", type = "dirichlet", bnd = "Top", value = 0.0 } -- if the FS intersects the top
+    --{ cmp = "p", type = "dirichlet", bnd = "Top", value = 0.0 },
+    --{ cmp = "c", type = "dirichlet", bnd = "Top", value = 0.0 }
 
   },
 

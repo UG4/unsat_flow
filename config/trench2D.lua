@@ -144,6 +144,15 @@ local trench2D =
     dtred = 0.5,    -- [1] reduction factor for time step
     tol   = 1e-3
   },
+  
+  output = 
+  {
+    freq	= 1, 	-- prints every x timesteps
+    binary 	= true,	-- format for vtk file	
+    file = "simulations/levee2D",
+    data = {"c", "p", "q", "s", "k"}
+  }
+
 }
 
 
