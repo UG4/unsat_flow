@@ -24,7 +24,7 @@ local trench2D =
   },
   
   paramTable = { 
-    ["DrainageTime"] = 1.0, 
+    ["DrainageTime"] = 0.2, 
   },
 
   flow = 

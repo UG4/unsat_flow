@@ -44,6 +44,7 @@ local henry =
   {
     type = "haline",
     cmp = {"p", "c"},
+    boussinesq = true,
 
     gravity = -9.81,    -- [ m s^{-2}�] ("standard", "no" or numeric value) 
     density =           
@@ -146,6 +147,14 @@ local henry =
       dtmax	= 10 * ARGS.dt,	-- [s]  maximal time step
       dtred	= 0.1,				-- [1]  reduction factor for time step
       tol 	= 1e-2,
+  },
+  
+  output = 
+  {
+    freq	= 1, 	-- prints every x timesteps
+    binary 	= true,	-- format for vtk file	
+    file = "simulations/levee2D",
+    data = {"c", "p", "q", "s", "k", "rho", "mu"}
   },
 }
 

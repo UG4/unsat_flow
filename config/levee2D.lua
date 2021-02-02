@@ -168,13 +168,13 @@ local levee2D =
   -- config for vtk output
   -- possible data output variables: 
   -- c (concentration), p (pressure), q (Darcy Velocity), s (saturation),
-  -- k (conductivity), f (flux)
+  -- k (conductivity), f (flux), rho (density)
   output = 
     {
       freq	= 1, 	-- prints every x timesteps
       binary 	= true,	-- format for vtk file	
       file = "simulations/levee2D",
-      data = {"c", "p", "q", "s", "k"}
+      data = {"c", "p", "q", "s", "k", "rho"}
     }
 }
 

@@ -25,6 +25,8 @@ function ProblemDisc:new(problemDesc, dom)
     self.cmp = problemDesc.flow.cmp
     self.approxSpace = nil
     self.domainDisc = nil
+    self.rho = nil
+    self.mu = nil
 
     self.gravity = ConstUserVector(0.0)
     self.gravity:set_entry(problemDesc.domain.dim-1, problemDesc.flow.gravity)
@@ -58,9 +60,9 @@ function ProblemDisc:CreateElemDisc(subdom, medium)
 	-- transport equation
     elemDisc["transport"] = ConvectionDiffusion(self.cmp[2], subdom, "fv1")
 
-    density = ProblemDisc:density()
+    viscosity = self.mu
 
-    viscosity = ProblemDisc:viscosity(self.problem.flow.viscosity)
+    density = self.rho
 
     permeability = medium.permeability
 
@@ -71,6 +73,9 @@ function ProblemDisc:CreateElemDisc(subdom, medium)
     -- the vanGenuchten model is calculated using the Richards Plugin
     local conductivity = ProblemDisc:conductivity(medium.conductivity.value)
     local saturation = ProblemDisc:saturation(medium.saturation.value)
+
+    local si = self.domain:subset_handler():get_subset_index(subdom)
+    self.CompositeConductivity:add(si, saturation)
 
     -- the permeability is multiplied by relative
     -- hydraulic conductivity k(p)
@@ -99,15 +104,31 @@ function ProblemDisc:CreateElemDisc(subdom, medium)
 	--		+ \nabla \cdot [\rho_w \vec{v}_w] = \rho_w \Gamma_w$
 
 	-- fluid storage: \Phi \rho_w S_w
-	local storage = ScaleAddLinkerNumber()
-    storage:add(porosity*density, saturation)
-
+    local storage = ScaleAddLinkerNumber()
 	-- flux \rho_w \vec{v}_w
-	local fluidFlux = ScaleAddLinkerVector()
-	fluidFlux:add(density, DarcyVelocity)
+    local fluidFlux = ScaleAddLinkerVector()
 
-	elemDisc["flow"]:set_mass(storage)
-	elemDisc["flow"]:set_flux(fluidFlux)
+    if self.problem.flow.boussinesq then
+        -- boussinesq fluid storage: \Phi \rho_w0 S_w
+        local storageB = ScaleAddLinkerNumber()
+        -- boussinesq flux \rho_w0 \vec{v}_w
+        local fluidFluxB = ScaleAddLinkerVector()
+
+        storageB:add(porosity*self.problem.flow.density.min, saturation)
+        fluidFluxB:add(self.problem.flow.density.min, DarcyVelocity)
+
+        elemDisc["flow"]:set_mass(storageB)
+        elemDisc["flow"]:set_flux(fluidFluxB)
+
+    else
+        storage:add(porosity*density, saturation)
+        fluidFlux:add(density, DarcyVelocity)
+
+        elemDisc["flow"]:set_mass(storage)
+        elemDisc["flow"]:set_flux(fluidFlux)
+    end
+
+
 	elemDisc["flow"]:set_mass_scale(0.0)
   	elemDisc["flow"]:set_diffusion(0.0)
 
@@ -119,19 +140,13 @@ function ProblemDisc:CreateElemDisc(subdom, medium)
 	-- 		+ \nabla \cdot [\rho_w \omega \vec{v}_w - \rho_w D \nabla \omega] 
 	--			= \rho_w \omega \Gamma_w$
 
-	elemDisc["transport"]:set_mass(0.0)
-	elemDisc["transport"]:set_mass_scale(storage)
+    elemDisc["transport"]:set_mass_scale(storage)
 	elemDisc["transport"]:set_velocity(fluidFlux)
+	elemDisc["transport"]:set_mass(0.0)
     elemDisc["transport"]:set_diffusion(diffusion)
 
 
     -- setting inputs
-    density:set_input(0, elemDisc["transport"]:value())
-
-    if self.problem.flow.viscosity.type == "real" then
-        viscosity:set_input(0, elemDisc["transport"]:value())
-    end
-
     capillary = -1.0 * elemDisc["flow"]:value()
 
     if medium.conductivity.type == "exp" then
@@ -149,16 +164,16 @@ function ProblemDisc:CreateElemDisc(subdom, medium)
     end
 
 
+
+
     print("Created Element Discretisation for Subset ", subdom)
 
     --[[
-    self.vtk:select(density, "Density")
     self.vtk:select(storage, "Storage")
     self.vtk:select(DarcyVelocity, "DarcyVelocity")
     self.vtk:select(fluidFlux, "Flux")
     self.vtk:select(saturation, "Saturation")
     self.vtk:select(conductivity, "Conductivity")
-    self.vtk:select(capillary, "Capillary Pressure")
     ]]--
 
     return elemDisc
@@ -168,11 +183,28 @@ end
 function ProblemDisc:CreateDomainDisc(approxSpace)
     domainDisc = DomainDiscretization(approxSpace)
 
+    conc = GridFunctionNumberData(self.u, "c")
+
+    -- density grid function
+    self.rho = self:density()
+    self.rho:set_input(0, conc)
+
+    self.mu = self:viscosity()
+    if self.problem.flow.viscosity.type ~= "const" then
+        self.mu:set_input(0, conc)
+    end
+
+    if self.problem.boussinesq then
+        print("using boussineq approximation")
+    end
+
+    self.CompositeConductivity = CompositeUserNumber(false)
+
     for i,medium in ipairs(self.problem.medium) do -- for all media
         local elemDisc = nil
 
         for j, subset in ipairs(medium.subsets) do
-            elemDisc = ProblemDisc:CreateElemDisc(subset, medium)
+            elemDisc = self:CreateElemDisc(subset, medium)
 
             domainDisc:add(elemDisc["flow"])
             domainDisc:add(elemDisc["transport"])
@@ -198,18 +230,18 @@ end
 
 function ProblemDisc:CreateVTKOutput()
     -- generating the vtk output
-    -- for future reference; util.Balance(plotdata)
-
+    -- for future reference; util.Balance()
     for i, v in ipairs(self.problem.output.data) do
         if v == "p" or v == "c" then
-            vtk:select(GridFunctionNumberData(self.u, v), v)
-        else if v == "q" then
-            vtk:select(GridFunctionNumberData(self.u, v), v)
+            disc.vtk:select_nodal(GridFunctionNumberData(self.u, v), v)
+        elseif v == "rho" then
+            disc.vtk:select(self.rho, v)
+        elseif v == "mu" and self.problem.flow.viscosity.type ~= "const" then
+            disc.vtk:select(self.mu, v)
+        elseif v == "k" then
+            disc.vtk:select_element(CompositeConductivity, v)
         end
     end
-
-    table.insert(plotdata, vtk)
-    return 
 end
 
 
@@ -227,6 +259,7 @@ function ProblemDisc:CreateModelMap(paramDesc)
     return modelMap
 end
 
+
 function ProblemDisc:SetInitialData()
     print(self.u)
     for i, initial in ipairs(self.problem.initial) do
@@ -234,6 +267,7 @@ function ProblemDisc:SetInitialData()
         Interpolate(initial.value, self.u, initial.cmp)
     end
 end
+
 
 function ProblemDisc:density(densDesc)   
     local p_w = self.problem.flow.density.min
@@ -287,6 +321,12 @@ function ProblemDisc:density(densDesc)
     return density
 end
 
+
+function ProblemDisc:CreateDarcyVelocity()
+    
+end
+
+
 function ProblemDisc:conductivity(condID)
     conductivity = nil
     values = self.modelMap[condID]
@@ -329,6 +369,7 @@ function ProblemDisc:conductivity(condID)
     return conductivity
 end
 
+
 function ProblemDisc:saturation(satID)
     saturation = nil
     values = self.modelMap[satID]
@@ -364,14 +405,15 @@ function ProblemDisc:saturation(satID)
     return saturation
 end
 
-function ProblemDisc:viscosity(visDesc)
+
+function ProblemDisc:viscosity()
     local viscosity = nil
     local mu0 = nil
-    if visDesc.type == "const" then
-        viscosity = visDesc.mu0
+    if self.problem.flow.viscosity.type == "const" then
+        viscosity = self.problem.flow.viscosity.mu0
 
-    elseif visDesc.type == "real" then
-        mu0 = visDesc.mu0
+    elseif self.problem.flow.viscosity.type == "real" then
+        mu0 = self.problem.flow.viscosity.mu0
 
         function ViscosityFct(w)
             return mu0*(1 + 1.85*w - 4.1*w^2 + 44.5 * w^3)

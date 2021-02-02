@@ -44,12 +44,9 @@ disc.u = GridFunction(approxSpace)
 -- Creating the Domain discretisation for the problem
 domainDisc = disc:CreateDomainDisc(approxSpace)
 
--- vtk output function
-print(disc.u)
-disc.OutputFct = disc:CreateOutputFct()
+-- vtk output
 disc.vtk = VTKOutput()
-disc.vtk:select(GridFunctionNumberData(disc.u, "p"), "p")
-disc.vtk:select(GridFunctionNumberData(disc.u, "c"), "c")
+disc:CreateVTKOutput()
 print("Created VTK Output")
 
 -- Initial Data
@@ -68,6 +65,8 @@ local dtMin = problem.time.dtmin
 local dtMax = problem.time.dtmax
 local TOL = problem.time.tol
 local dtred = problem.time.dtred
+
+print(problem.time)
 
 --exit()
 

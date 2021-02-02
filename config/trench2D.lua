@@ -42,6 +42,7 @@ local trench2D =
   {
     type = "haline",
     cmp = {"p", "c"},
+    boussinesq = true,
 
     gravity = Trench2D_g,    -- [ m s^{-2}�] ("standard", "no" or numeric value) 
     density =           
@@ -140,7 +141,7 @@ local trench2D =
     stop  = 20.0,  -- [s] end time point  -- 10,000 years
     dt  = 0.01, -- [s] initial time step
     dtmin = 1e-8, -- [s] minimal time step
-    dtmax = 100, -- [s] maximal time step  -- 100.0 years
+    dtmax = 1e-3, -- [s] maximal time step  -- 100.0 years
     dtred = 0.5,    -- [1] reduction factor for time step
     tol   = 1e-3
   },
@@ -150,7 +151,7 @@ local trench2D =
     freq	= 1, 	-- prints every x timesteps
     binary 	= true,	-- format for vtk file	
     file = "simulations/levee2D",
-    data = {"c", "p", "q", "s", "k"}
+    data = {"c", "p", "q", "s", "k", "rho", "mu"}
   }
 
 }
@@ -158,19 +159,18 @@ local trench2D =
 
 function Trench2DDrainagePressureBoundaryTime(x, y, t, tD)
   if (t <= tD) then
-    return true, (2.2*t / tD - 2.0) * trench2D.flow.density.max * trench2D.flow.gravity
+    return true, (2.2*t / tD - 2.0) * (-1.0) * Trench2D_rhog
   else
-    return true, 0.2 * trench2D.flow.density.max * trench2D.flow.gravity
+    return true, 0.2  * (-1.0) * Trench2D_rhog
   end
 end
 
 function Trench2DDrainagePressureBoundary(x, y, t)
-  return Trench2DDrainagePressureBoundaryTime(x, y, t, trench2D.paramTable["DrainageTime"])  
+  return Trench2DDrainagePressureBoundaryTime(x, y, t, trench2D.paramTable["DrainageTime"]) 
 end
 
 function Trench2DAquiferBoundary(x, y, t)
-  temp = (1.0 - y) * Trench2D_rhog
-  return true, temp
+  return true, (1.0 - y) * Trench2D_rhog
 end
 
 function Trench2DPressureStart(x, y, t)
