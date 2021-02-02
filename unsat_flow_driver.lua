@@ -19,7 +19,7 @@ ARGS =
   numRefs           = util.GetParamNumber("--numRefs", 2, "number of refinements after parallel distribution"),
   check             = util.HasParamOption("--check", false, "checks if the config file has the correct layout"),
   outFileNamePrefix = util.GetParam("-o", "unsat_"),
-  dt			          = util.GetParamNumber("-dt", 0.01), -- time step length
+  dt			          = util.GetParamNumber("-dt", 0.001), -- time step length
   newton            = util.HasParamOption("--newton", false),
 }
 
@@ -31,18 +31,18 @@ local dom = util.CreateAndDistributeDomain(problem.domain.grid, ARGS.numRefs, AR
 -- saves the refined grid
 -- SaveGridHierarchyTransformed(dom:grid(), dom:subset_handler(), "refined.ugx", 0.1)
 
-disc = ProblemDisc:new(problem, dom)
+local disc = ProblemDisc:new(problem, dom)
 
 -- create approximation space.
-approxSpace = disc:CreateApproxSpace()
+local approxSpace = disc:CreateApproxSpace()
 
 -- Index ordering
 -- OrderCuthillMcKee(approxSpace, true);
 
-disc.u = GridFunction(approxSpace)
+disc.u = GridFunction(disc.approxSpace)
 
 -- Creating the Domain discretisation for the problem
-domainDisc = disc:CreateDomainDisc(approxSpace)
+local domainDisc = disc:CreateDomainDisc(approxSpace)
 
 -- vtk output
 disc.vtk = VTKOutput()
@@ -66,13 +66,11 @@ local dtMax = problem.time.dtmax
 local TOL = problem.time.tol
 local dtred = problem.time.dtred
 
-print(problem.time)
-
 --exit()
 
 if ARGS.newton then
-util.SolveNonlinearTimeProblem(disc.u, domainDisc, solver, disc.vtk, ARGS.outFileNamePrefix,
-"ImplEuler", 1.0, startTime, endTime, dt, dtMin, dtred)
+  util.SolveNonlinearTimeProblem(disc.u, domainDisc, solver, disc.vtk, ARGS.outFileNamePrefix,
+  "ImplEuler", 1.0, startTime, endTime, dt, dtMin, dtred)
 else
 
 -- LIMEX time-stepping
