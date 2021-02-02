@@ -70,17 +70,17 @@ function ProblemDisc:CreateElemDisc(subdom, medium)
 
     -- hydraulic conductivity in saturated medium
     -- K_s = k / mu
-    -- the permeability is multiplied by relative
-    -- hydraulic conductivity k(p)
+    -- for unsaturated flow: 
+    -- multiplied by relative hydraulic conductivity k(p)
     local hydrCond = ScaleAddLinkerMatrix()
-    hydrCond:add(conductivity, permeability / viscosity)
+    hydrCond:add(conductivity, permeability)
 
     -- Darcy Velocity
     -- $\vec q := -k*k(p)/mu (\grad p - \rho \vec g)$
     local DarcyVelocity = DarcyVelocityLinker()
     DarcyVelocity:set_permeability(hydrCond)
     DarcyVelocity:set_viscosity(viscosity)
-    DarcyVelocity:set_pressure_gradient(elemDisc["flow"]:gradient())
+    DarcyVelocity:set_pressure_gradient(self.grad_p)
     DarcyVelocity:set_density(density)
     DarcyVelocity:set_gravity(self.gravity)
 	-- print("Darcy Velocity created.")
@@ -182,6 +182,8 @@ function ProblemDisc:CreateDomainDisc(approxSpace)
     if self.problem.flow.viscosity.type ~= "const" then
         self.mu:set_input(0, conc)
     end
+
+    self.grad_p = GridFunctionGradientData(self.u, "p")
 
     self.capillary = ScaleAddLinkerNumber()
     self.capillary:add(-1.0, GridFunctionNumberData(self.u, "p"))
