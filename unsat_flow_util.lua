@@ -74,9 +74,6 @@ function ProblemDisc:CreateElemDisc(subdom, medium)
     local conductivity = ProblemDisc:conductivity(medium.conductivity.value)
     local saturation = ProblemDisc:saturation(medium.saturation.value)
 
-    local si = self.domain:subset_handler():get_subset_index(subdom)
-    self.CompositeConductivity:add(si, saturation)
-
     -- the permeability is multiplied by relative
     -- hydraulic conductivity k(p)
     hydrCond = ScaleAddLinkerMatrix()
@@ -168,6 +165,10 @@ function ProblemDisc:CreateElemDisc(subdom, medium)
 
     print("Created Element Discretisation for Subset ", subdom)
 
+
+    -- Preparations for IO.
+    local si = self.domain:subset_handler():get_subset_index(subdom)
+    self.CompositeConductivity:add(si, saturation)
     --[[
     self.vtk:select(storage, "Storage")
     self.vtk:select(DarcyVelocity, "DarcyVelocity")
@@ -212,15 +213,29 @@ function ProblemDisc:CreateDomainDisc(approxSpace)
     end
 
     -- Create Boundary Conditions
-    dirichletBnd = DirichletBoundary()
+    local dirichletBnd = nil
+    local neumannBnd = {} 
     for i, v in ipairs(self.problem.boundary) do
+       
         if v.type == "dirichlet" then
+            -- Dirichtlet boundary 
+            dirichletBnd = dirichletBnd or DirichletBoundary()
             dirichletBnd:add(v.value, v.cmp, v.bnd)
             print("Added Dirichlet Boundary with value " .. v.value .. " for " .. v.cmp .. " on subset " .. v.bnd)
         end
+        
+        if v.type == "flux" then
+            -- Neumann-type
+            neumannBnd[v.cmp] =  neumannBnd[v.cmp] or NeumannBoundary(v.cmp, "fv1")
+            neumannBnd[v.cmp]:add(v.value, v.bnd, v.inner)
+            print("Added Neumann Boundary with value " .. v.value .. " for " .. v.cmp .. " on subset " .. v.bnd)
+        end
+ 
     end
-
-    domainDisc:add(dirichletBnd)
+    
+    if (dirichletBnd) then  domainDisc:add(dirichletBnd) end
+    if (neumannBnd["p"]) then  domainDisc:add(neumannBnd["p"]) end
+    if (neumannBnd["c"]) then  domainDisc:add(neumannBnd["c"]) end
 
     print("Created Domain Discretisation")
     self.domainDisc = domainDisc
@@ -239,7 +254,7 @@ function ProblemDisc:CreateVTKOutput()
         elseif v == "mu" and self.problem.flow.viscosity.type ~= "const" then
             disc.vtk:select(self.mu, v)
         elseif v == "k" then
-            disc.vtk:select_element(CompositeConductivity, v)
+            disc.vtk:select_element(self.CompositeConductivity, v)
         end
     end
 end
