@@ -80,14 +80,13 @@ function ProblemDisc:CreateElemDisc(subdom, medium)
     -- K_s = k / mu
     -- for unsaturated flow: 
     -- multiplied by relative hydraulic conductivity k(p)
-    local hydrCond = ScaleAddLinkerMatrix()
-    hydrCond:add(conductivity, permeability)
+    local khyd = ScaleAddLinkerMatrix()
+    khyd:add(conductivity, permeability)
 
     -- Darcy Velocity
     -- $\vec q := -k*k(p)/mu (\grad p - \rho \vec g)$
     local DarcyVelocity = DarcyVelocityLinker()
-    -- DarcyVelocity:set_permeability(hydrCond)  -- TODO!!!
-    DarcyVelocity:set_permeability(permeability)
+    DarcyVelocity:set_permeability(khyd)  
     DarcyVelocity:set_viscosity(viscosity)
     DarcyVelocity:set_pressure_gradient(elemDisc["flow"]:gradient())
     DarcyVelocity:set_density(density)
@@ -176,7 +175,7 @@ function ProblemDisc:CreateElemDisc(subdom, medium)
     -- Preparations for IO.
     local si = self.domain:subset_handler():get_subset_index(subdom)
     self.CompositeCapillary:add(si, capillary)
-    self.CompositeConductivity:add(si, conductivity)
+    self.CompositePermeability:add(si, conductivity)
     self.CompositeSaturation:add(si, saturation)
     self.CompositeDarcyVelocity:add(si, DarcyVelocity)
     self.CompositeFlux:add(si, fluidFlux)
@@ -209,7 +208,7 @@ function ProblemDisc:CreateDomainDisc(approxSpace)
     end
     
     self.CompositeCapillary = CompositeUserNumber(true)
-    self.CompositeConductivity = CompositeUserNumber(false)
+    self.CompositePermeability = CompositeUserNumber(false)
     self.CompositeSaturation = CompositeUserNumber(false)
     self.CompositeDarcyVelocity = CompositeUserVector(false)
     self.CompositeFlux = CompositeUserVector(false)
@@ -270,7 +269,7 @@ function ProblemDisc:CreateVTKOutput()
             --self.vtk:select_element(self.mu, v)
         -- conductivity
         elseif v == "k" then
-            self.vtk:select_element(self.CompositeConductivity, v)
+            self.vtk:select_element(self.CompositePermeability, v)
         -- saturation
         elseif v == "s" then
             self.vtk:select_element(self.CompositeSaturation, v)

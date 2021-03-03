@@ -32,21 +32,23 @@ local henry =
     { uid = "@Silt",
       type = "vanGenuchten",
       thetaS = 0.396, thetaR = 0.131,
-      alpha = 0.423/rhog, n = 2.06, 
-      Ksat = 4.745e-6},--4.96e-1 -- }, 
+      alpha = 0.423/rhog*10, n = 2.06, 
+      Ksat = 1.0  -- Relative permeability!
+       }, 
     
     { uid = "@Clay",  -- modified n
       type = "vanGenuchten",
-      alpha = 0.152/rhog, n = 3.06,  
+      alpha = 0.152/rhog*10, n = 3.06,  
       thetaS = 0.446, thetaR = 0.1, 
-      Ksat= 8.2e-4 * 1e-3,},  --KSat= kappa/mu*rho*g   <=> kappa = Ksat*mu/(rho*g) 
+      Ksat = 1.0  -- Relative permeability!
+      },  --KSat= kappa/mu*rho*g   <=> kappa = Ksat*mu/(rho*g) 
     },
 
   flow = 
   {
     type = "haline",
     cmp = {"p", "c"},
-    boussinesq = true,
+    boussinesq = false,
 
     gravity = -9.81,    -- [ m s^{-2}�] ("standard", "no" or numeric value) 
     density =           
