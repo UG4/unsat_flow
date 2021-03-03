@@ -148,8 +148,8 @@ local henry =
   {
       control	= "limex",
       start 	= 0.0,				-- [s]  start time point
-      stop	= 200.0,			-- [s]  end time point
-      max_time_steps = 1000,		-- [1]	maximum number of time steps
+      stop	= 1000.0,			-- [s]  end time point
+      max_time_steps = 10000,		-- [1]	maximum number of time steps
       dt		= ARGS.dt,		-- [s]  initial time step
       dtmin	= 0.00001 * ARGS.dt,	-- [s]  minimal time step
       dtmax	= 10.0,	-- [s]  maximal time step

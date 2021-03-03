@@ -21,13 +21,13 @@ local trench2D =
       type = "vanGenuchten",
       thetaS = 0.396, thetaR = 0.131,
       alpha = 0.423/rhog, n = 2.06, 
-      Ksat = 4.745e-6},--4.96e-1 -- }, 
+      Ksat = 1.0},--4.96e-1 -- }, 
     
     { uid = "@Clay",  -- modified n
       type = "vanGenuchten",
       alpha = 0.152/rhog, n = 3.06,  
       thetaS = 0.446, thetaR = 0.1, 
-      Ksat= 8.2e-4 * 1e-3,},  --KSat= kappa/mu*rho*g   <=> kappa = Ksat*mu/(rho*g) 
+      Ksat= 1.0},  --KSat= kappa/mu*rho*g   <=> kappa = Ksat*mu/(rho*g) 
     },
   
   paramTable = { 
@@ -139,9 +139,9 @@ local trench2D =
   {
     control = "limex",
     start   = 0.0,    -- [s] start time point
-    stop  = 20.0,  -- [s] end time point  -- 10,000 years
+    stop  = 200.0,  -- [s] end time point  -- 10,000 years
     dt  = 0.01, -- [s] initial time step
-    max_time_steps = 1000,		-- [1]	maximum number of time steps
+    max_time_steps = 10000,		-- [1]	maximum number of time steps
     dtmin	= 0.00001 * ARGS.dt,	-- [s]  minimal time step
     dtmax	= 10.0,	-- [s]  maximal time step
     dtred = 0.1,    -- [1] reduction factor for time step

@@ -18,13 +18,13 @@ local levee2D =
       type = "vanGenuchten",
       thetaS = 0.396, thetaR = 0.131,
       alpha = 0.423/rhog, n = 2.06, 
-      Ksat = 4.745e-6},--4.96e-1 -- }, 
+      Ksat = 1.0},--4.96e-1 -- }, 
     
     { uid = "@Clay",  -- modified n
       type = "vanGenuchten",
       alpha = 0.152/rhog, n = 3.06,  
       thetaS = 0.446, thetaR = 0.1, 
-      Ksat= 8.2e-4 * 1e-3,},  --KSat= kappa/mu*rho*g   <=> kappa = Ksat*mu/(rho*g) 
+      Ksat= 1.0,},  --KSat= kappa/mu*rho*g   <=> kappa = Ksat*mu/(rho*g) 
       
     { uid = "@UserPorosity", 
       type = "const", 
@@ -55,7 +55,7 @@ local levee2D =
     density =           
     { type = "linear",    -- density function ["linear", "exp", "ideal"]
       min = 1000,       -- [ kg m^{-3} ] water density
-      max = 1025,       -- [ kg m^{-3} ] saltwater density
+      max = 1020,       -- [ kg m^{-3} ] saltwater density
       w_max = 1,
     },  
     
@@ -63,12 +63,11 @@ local levee2D =
     { type = "const",      -- viscosity function ["const", "real"] 
       mu0 = 1e-3        -- [ kg m^{-3} ]  
     },
-    air_pressure = 1013.25e2,
   },
    medium = 
    {
       {   subsets = {"CLAY"}, 
-          porosity = 0.35,
+          porosity = 1.0,
           saturation = 
           { type = "vanGenuchten",
             value = "@Silt"
@@ -81,7 +80,7 @@ local levee2D =
           permeability  = 1.019368e-9,  -- constant
       },
       {   subsets = {"SAND_LEFT","SAND_RIGHT"}, 
-          porosity = 0.35,
+          porosity = 1.0,
           saturation    = 
           { type = "vanGenuchten",
             value = "@Silt"
