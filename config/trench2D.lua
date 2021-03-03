@@ -2,7 +2,7 @@
 
 Trench2D_rho = 998.23
 Trench2D_g = -9.81
-Trench2D_rhog = (-1.0)*Trench2D_rho*Trench2D_g
+rhog = (-1.0)*Trench2D_rho*Trench2D_g
 
 local trench2D = 
 { 
@@ -16,18 +16,19 @@ local trench2D =
   },
 
   -- list of non-linear models => translated to functions
-  parameter = {  
+  parameter = {  -- TODO: Parameters from List & Radu (2016)?
     { uid = "@Silt",
       type = "vanGenuchten",
       thetaS = 0.396, thetaR = 0.131,
-      alpha = 0.423*Trench2D_rhog, n = 2.06, Ksat= 4.745e-6},--4.96e-1 }, 
+      alpha = 0.423/rhog, n = 2.06, 
+      Ksat = 4.745e-6},--4.96e-1 -- }, 
     
     { uid = "@Clay",  -- modified n
       type = "vanGenuchten",
-      alpha = 0.152*Trench2D_rhog, n = 3.06,  
+      alpha = 0.152/rhog, n = 3.06,  
       thetaS = 0.446, thetaR = 0.1, 
-      Ksat= 8.2e-4 * 1e-3,},  --KSat= kappa/mu*rh0*g   <=> kappa = Ksat*mu/(rho*g) 
-  },
+      Ksat= 8.2e-4 * 1e-3,},  --KSat= kappa/mu*rho*g   <=> kappa = Ksat*mu/(rho*g) 
+    },
   
   paramTable = { 
     ["DrainageTime"] = 1.0, 
@@ -70,7 +71,7 @@ local trench2D =
             value   = "@Silt",
           },
           diffusion   = 18.8571e-6,   -- constant
-          permeability  = 1.019368e-9 / Trench2D_rhog,  -- constant
+          permeability  = 1.019368e-9,  -- constant
       },
   },
 
@@ -140,10 +141,11 @@ local trench2D =
     start   = 0.0,    -- [s] start time point
     stop  = 20.0,  -- [s] end time point  -- 10,000 years
     dt  = 0.01, -- [s] initial time step
-    dtmin = 1e-8, -- [s] minimal time step
-    dtmax = 1e-3, -- [s] maximal time step  -- 100.0 years
-    dtred = 0.5,    -- [1] reduction factor for time step
-    tol   = 1e-3
+    max_time_steps = 1000,		-- [1]	maximum number of time steps
+    dtmin	= 0.00001 * ARGS.dt,	-- [s]  minimal time step
+    dtmax	= 10.0,	-- [s]  maximal time step
+    dtred = 0.1,    -- [1] reduction factor for time step
+    tol   = 1e-2
   },
   
   output = 
@@ -159,9 +161,9 @@ local trench2D =
 
 function Trench2DDrainagePressureBoundaryTime(x, y, t, tD)
   if (t <= tD) then
-    return true, (2.2*t / tD - 2.0) * (-1.0) * Trench2D_rhog
+    return true, (2.2*t / tD - 2.0) * (-1.0) * rhog
   else
-    return true, 0.2  * (-1.0) * Trench2D_rhog
+    return true, 0.2  * (-1.0) * rhog
   end
 end
 
@@ -170,11 +172,11 @@ function Trench2DDrainagePressureBoundary(x, y, t)
 end
 
 function Trench2DAquiferBoundary(x, y, t)
-  return true, (1.0 - y) * Trench2D_rhog
+  return true, (1.0 - y) * rhog
 end
 
 function Trench2DPressureStart(x, y, t)
-  return (1.0 - y) * Trench2D_rhog
+  return (1.0 - y) * rhog
 end
 
 return trench2D

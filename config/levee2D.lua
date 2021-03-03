@@ -1,3 +1,5 @@
+rhog = 9.81 * 1000 
+
 local levee2D = 
 { 
   -- The domain specific setup
@@ -11,19 +13,18 @@ local levee2D =
   },
 
   -- list of non-linear models => translated to functions
-  parameter = {  
-  
-    { uid = "@Silt", 
+  parameter = {  -- TODO: Parameters from List & Radu (2016)?
+    { uid = "@Silt",
       type = "vanGenuchten",
       thetaS = 0.396, thetaR = 0.131,
-    --thetaS = 0.396, thetaR = 0.396,
-      alpha = 0.423, n = 2.06, Ksat= 4.96e-1 }, 
+      alpha = 0.423/rhog, n = 2.06, 
+      Ksat = 4.745e-6},--4.96e-1 -- }, 
     
     { uid = "@Clay",  -- modified n
       type = "vanGenuchten",
-      alpha = 0.152, n = 3.06,  
+      alpha = 0.152/rhog, n = 3.06,  
       thetaS = 0.446, thetaR = 0.1, 
-      Ksat= 8.2e-4 * 1e-3,},  --KSat= kappa/mu*rh0*g   <=> kappa = Ksat*mu/(rho*g)
+      Ksat= 8.2e-4 * 1e-3,},  --KSat= kappa/mu*rho*g   <=> kappa = Ksat*mu/(rho*g) 
       
     { uid = "@UserPorosity", 
       type = "const", 
@@ -54,12 +55,12 @@ local levee2D =
     density =           
     { type = "linear",    -- density function ["linear", "exp", "ideal"]
       min = 1000,       -- [ kg m^{-3} ] water density
-      max = 1200,       -- [ kg m^{-3} ] saltwater density
+      max = 1025,       -- [ kg m^{-3} ] saltwater density
       w_max = 1,
     },  
     
     viscosity = 
-    { type = "real",      -- viscosity function ["const", "real"] 
+    { type = "const",      -- viscosity function ["const", "real"] 
       mu0 = 1e-3        -- [ kg m^{-3} ]  
     },
     air_pressure = 1013.25e2,
@@ -67,7 +68,7 @@ local levee2D =
    medium = 
    {
       {   subsets = {"CLAY"}, 
-          porosity = 1.0,
+          porosity = 0.35,
           saturation = 
           { type = "vanGenuchten",
             value = "@Silt"
@@ -76,11 +77,11 @@ local levee2D =
           { type  = "vanGenuchten", 
             value   = "@Silt"
           },
-          diffusion   = 3.565e-6,   -- constant
-          permeability  = 4.845e-13,  -- constant
+          diffusion   = 18.8571e-6,   -- constant
+          permeability  = 1.019368e-9,  -- constant
       },
       {   subsets = {"SAND_LEFT","SAND_RIGHT"}, 
-          porosity = 1.0,
+          porosity = 0.35,
           saturation    = 
           { type = "vanGenuchten",
             value = "@Silt"
@@ -89,8 +90,8 @@ local levee2D =
           { type      = "vanGenuchten",
             value = "@Silt"
           },
-          diffusion   = 3.565e-6,
-          permeability  = 4.845e-13,
+          diffusion   = 18.8571e-6,   -- constant
+          permeability  = 1.019368e-9,  -- constant
       },
   },
 
@@ -154,16 +155,17 @@ local levee2D =
   },
   time = 
   {
-    control	= "limex",
-    start 	= 0.0,				-- [s]  start time point
-    stop	= 100000,			-- [s]  end time point
-    max_time_steps = 1000,		-- [1]	maximum number of time steps
-    dt		= ARGS.dt,		-- [s]  initial time step
-    dtmin	= 0.00001 * ARGS.dt,	-- [s]  minimal time step
-    dtmax	= 10 * ARGS.dt,	-- [s]  maximal time step
-    dtred	= 0.1,				-- [1]  reduction factor for time step
-    tol 	= 1e-2,
+      control	= "limex",
+      start 	= 0.0,				-- [s]  start time point
+      stop	= 200.0,			-- [s]  end time point
+      max_time_steps = 1000,		-- [1]	maximum number of time steps
+      dt		= ARGS.dt,		-- [s]  initial time step
+      dtmin	= 0.00001 * ARGS.dt,	-- [s]  minimal time step
+      dtmax	= 10.0,	-- [s]  maximal time step
+      dtred	= 0.1,				-- [1]  reduction factor for time step
+      tol 	= 1e-2,
   },
+  
   
   -- config for vtk output
   -- possible data output variables: 
