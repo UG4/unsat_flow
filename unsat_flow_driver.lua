@@ -16,7 +16,7 @@ ARGS =
 {
   problemID         = util.GetParam("--problem-id", "trench2D"),
   numPreRefs        = util.GetParamNumber("--numPreRefs", 1, "number of refinements before parallel distribution"),
-  numRefs           = util.GetParamNumber("--numRefs", 2, "number of refinements after parallel distribution"),
+  numRefs           = util.GetParamNumber("--numRefs", 4, "number of refinements after parallel distribution"),
   check             = util.HasParamOption("--check", false, "checks if the config file has the correct layout"),
   outFileNamePrefix = util.GetParam("-o", "unsat_"),
   dt			          = util.GetParamNumber("-dt", 0.001), -- time step length
@@ -24,7 +24,7 @@ ARGS =
 }
 
 local problem = require(ARGS.problemID)
-InitUG(problem.domain.dim, AlgebraType("CPU", 1))
+InitUG(problem.domain.dim, AlgebraType("CPU", 2))
 
 local dom = util.CreateAndDistributeDomain(problem.domain.grid, ARGS.numRefs, ARGS.numPreRefs,  {})
 
@@ -99,14 +99,26 @@ else
   for i=1,nstages do
     limex:add_stage(i, limexNLSolver[i], domainDisc )
   end
-
-  -- local concErrorEst = Norm2Estimator()
-  local metricSpace = H1SemiComponentSpace(problem.flow.cmp[2]) -- L2ComponentSpace("h")
+ 
+  
+  local weightedMetricSpace=CompositeSpace()
+  --local spaceP = VelEnergyComponentSpace("p", 2, inst.coef.EnergyTensorFlow)
+  --local spaceC = L2ComponentSpace("c", 2, inst.coef.Conductivity2)
+  local spaceC = L2ComponentSpace("c", 2)
+  --local spaceP = VelEnergyComponentSpace("p", 2, ConstUserMatrix(1.0))
+   local spaceP = H1ComponentSpace("c", 2)
+  
+  weightedMetricSpace:add(spaceP)
+  weightedMetricSpace:add(spaceC)
+  
+  
   local concErrorEst = CompositeGridFunctionEstimator()
-  concErrorEst:add(metricSpace)
+  -- concErrorEst:add(weightedMetricSpace)
+  concErrorEst:add(spaceP)
+ concErrorEst:add(spaceC)
 
   limex:add_error_estimator(concErrorEst)
-  limex:set_tolerance(1e-2)
+  limex:set_tolerance(1e-3)
   limex:set_stepsize_safety_factor(0.8)
   limex:set_time_step(problem.time.dt)
   limex:set_dt_min(problem.time.dtmin)
@@ -117,7 +129,7 @@ else
 
  -- Debugging LIMEX. 
   local dbgWriter = GridFunctionDebugWriter(approxSpace)
-  if (true) then
+  if (false) then
     limex:set_debug(dbgWriter)
     limex:set_debug_for_timestepper(dbgWriter)
     limexNLSolver[1]:set_debug(dbgWriter)
@@ -148,6 +160,6 @@ else
 
 
   -- Solve problem.
-  limexConvCheck:set_minimum_defect(3e-7)
+  limexConvCheck:set_minimum_defect(3e-10)
   limex:apply(disc.u, endTime, disc.u, 0.0)
 end

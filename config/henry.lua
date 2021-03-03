@@ -13,7 +13,7 @@ params =
 params.baseLvl = ARGS.numPreRefs
 
 -- additional constants for vanGenuchten
-rhog = 9.81 * 1000
+rhog = 9.81 * 1000 
 
 local henry = 
 { 
@@ -22,22 +22,24 @@ local henry =
   {
     dim = 2,
     grid = "grids/henry_quad_2x1.ugx",
+    --grid = "grids/henry_fract.ugx",
     numRefs = ARGS.numRefs,
     numPreRefs = ARGS.numPreRefs,
   },
 
   -- list of non-linear models => translated to functions
-  parameter = {  
+  parameter = {  -- TODO: Parameters from List & Radu (2016)?
     { uid = "@Silt",
       type = "vanGenuchten",
       thetaS = 0.396, thetaR = 0.131,
-      alpha = 0.423*rhog, n = 2.06, Ksat= 4.745e-6},--4.96e-1 -- }, 
+      alpha = 0.423/rhog, n = 2.06, 
+      Ksat = 4.745e-6},--4.96e-1 -- }, 
     
     { uid = "@Clay",  -- modified n
       type = "vanGenuchten",
-      alpha = 0.152*rhog, n = 3.06,  
+      alpha = 0.152/rhog, n = 3.06,  
       thetaS = 0.446, thetaR = 0.1, 
-      Ksat= 8.2e-4 * 1e-3,},  --KSat= kappa/mu*rh0*g   <=> kappa = Ksat*mu/(rho*g) 
+      Ksat= 8.2e-4 * 1e-3,},  --KSat= kappa/mu*rho*g   <=> kappa = Ksat*mu/(rho*g) 
     },
 
   flow = 
@@ -84,11 +86,15 @@ local henry =
 
   boundary = 
   {
-    -- { cmp = "c", type = "dirichlet", bnd = "Inflow", value = 0.0 },
-    { cmp = "c", type = "dirichlet", bnd = "Sea", value = 0.0 },
+    -- Sea
+    { cmp = "c", type = "dirichlet", bnd = "Sea", value = 1.0 },
     { cmp = "p", type = "dirichlet", bnd = "Sea", value = "HydroPressure_bnd" },
-    --{ cmp = "p", type = "dirichlet", bnd = "Top", value = 0.0 },
-    --{ cmp = "c", type = "dirichlet", bnd = "Top", value = 0.0 }
+    
+    -- Land
+    { cmp = "c", type = "dirichlet", bnd = "Inflow", value = 0.0 },
+    -- { cmp = "p", type = "flux", bnd = "Inflow", inner = "Medium", value = -3.3e-2 },
+    
+    { cmp = "p", type = "flux", bnd = "Top", inner="Medium", value="RechargeTop"}
 
   },
 
@@ -129,8 +135,8 @@ local henry =
           convCheck = {
               type		= "standard",
               iterations	= 30,		-- number of iterations
-              absolute	= 0.5e-8,	-- absolut value of defact to be reached; usually 1e-8 - 1e-10 (must be stricter / less than in newton section)
-              reduction	= 1e-7,		-- reduction factor of defect to be reached; usually 1e-7 - 1e-8 (must be stricter / less than in newton section)
+              absolute	= 0.5e-11,	-- absolut value of defact to be reached; usually 1e-8 - 1e-10 (must be stricter / less than in newton section)
+              reduction	= 1e-9,		-- reduction factor of defect to be reached; usually 1e-7 - 1e-8 (must be stricter / less than in newton section)
               verbose		= true,		-- print convergence rates if true
           }
       }
@@ -140,11 +146,11 @@ local henry =
   {
       control	= "limex",
       start 	= 0.0,				-- [s]  start time point
-      stop	= 100000,			-- [s]  end time point
+      stop	= 200.0,			-- [s]  end time point
       max_time_steps = 1000,		-- [1]	maximum number of time steps
       dt		= ARGS.dt,		-- [s]  initial time step
       dtmin	= 0.00001 * ARGS.dt,	-- [s]  minimal time step
-      dtmax	= 10 * ARGS.dt,	-- [s]  maximal time step
+      dtmax	= 10.0,	-- [s]  maximal time step
       dtred	= 0.1,				-- [1]  reduction factor for time step
       tol 	= 1e-2,
   },
@@ -153,23 +159,27 @@ local henry =
   {
     freq	= 1, 	-- prints every x timesteps
     binary 	= true,	-- format for vtk file	
-    file = "simulations/levee2D",
+    file = "simulations/henry2D",
     data = {"c", "p", "q", "s", "k", "rho", "mu"}
   },
 }
 
 function HydroPressure_bnd(x, y, t, si) 
-  p = HydroPressure(x, y)
-  if p < 0 then
-    return false, 0
-  else
-    return true, p
+  pp = HydroPressure(x, y)
+  if pp < 0 then return false, 0
+  else 
+  return true, pp 
   end
 end
 
 function HydroPressure(x, y) 
   return -10055.25 * (y + params.fs_depth)
 end
+
+function RechargeTop(x, y, t, si) 
+  return -(2.0-x)*3.3e-2
+end
+
 
 return henry
 
