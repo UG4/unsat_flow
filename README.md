@@ -11,14 +11,13 @@ and </br>
 <sub>($\partial_t (\Phi \rho_w S_w \omega) + \nabla \cdot [\rho_w \omega \vec{v}_w - \rho_w D \nabla \omega] = \rho_w \omega \Gamma_w$)</sub>
 
 Usage:
-ugshell -ex unsat_flow_app/unsat_flow_driver.lua --problem-id "example" --check
+ugshell -ex unsat_flow_app/unsat_flow_driver.lua --problem-id "example"
 
 ## Possible arguments
 * --problem-id specifies the problems config file, standard: "trench2D"
 * --numPreRefs specifies the number of refinements before distribution
 * --numRefs specifies the number of refinements after distribution
-* --check checks if a problem file has the correct layout
-* -o: outfile name prefix, standard: problem ID
+* -o: outfile name prefix
 
 ## Examples
 
