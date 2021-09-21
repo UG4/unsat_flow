@@ -12,13 +12,11 @@ util.CheckAndPrintHelp("unsaturated density flow problem");
 
 -- Parameters every problem uses
 -- problem specific parameters are in the config file
-ARGS = 
+ARGS =
 {
   problemID         = util.GetParam("--problem-id", "trench2D"),
   numPreRefs        = util.GetParamNumber("--numPreRefs", 1, "number of refinements before parallel distribution"),
   numRefs           = util.GetParamNumber("--numRefs", 4, "number of refinements after parallel distribution"),
-  check             = util.HasParamOption("--check", false, "checks if the config file has the correct layout"),
-  outFileNamePrefix = util.GetParam("-o", "unsat_"),
   dt			          = util.GetParamNumber("-dt", 0.001), -- time step length
   newton            = util.HasParamOption("--newton", false),
 }
@@ -35,9 +33,6 @@ local disc = ProblemDisc:new(problem, dom)
 
 -- create approximation space.
 local approxSpace = disc:CreateApproxSpace()
-
--- Index ordering
--- OrderCuthillMcKee(approxSpace, true);
 
 disc.u = GridFunction(disc.approxSpace)
 
@@ -66,10 +61,8 @@ local dtMax = problem.time.dtmax
 local TOL = problem.time.tol
 local dtred = problem.time.dtred
 
---exit()
-
 if ARGS.newton then
-  util.SolveNonlinearTimeProblem(disc.u, domainDisc, solver, disc.vtk, ARGS.outFileNamePrefix,
+  util.SolveNonlinearTimeProblem(disc.u, domainDisc, solver, disc.vtk, ARGS.problemID.."_",
   "ImplEuler", 1.0, startTime, endTime, dt, dtMin, dtred)
 else
 
@@ -99,19 +92,19 @@ else
   for i=1,nstages do
     limex:add_stage(i, limexNLSolver[i], domainDisc )
   end
- 
-  
+
+
   local weightedMetricSpace=CompositeSpace()
   --local spaceP = VelEnergyComponentSpace("p", 2, inst.coef.EnergyTensorFlow)
   --local spaceC = L2ComponentSpace("c", 2, inst.coef.Conductivity2)
   local spaceC = L2ComponentSpace("c", 2)
   --local spaceP = VelEnergyComponentSpace("p", 2, ConstUserMatrix(1.0))
    local spaceP = H1ComponentSpace("c", 2)
-  
+
   weightedMetricSpace:add(spaceP)
   weightedMetricSpace:add(spaceC)
-  
-  
+
+
   local concErrorEst = CompositeGridFunctionEstimator()
   -- concErrorEst:add(weightedMetricSpace)
   concErrorEst:add(spaceP)
@@ -127,7 +120,7 @@ else
   --limex:enable_matrix_cache()
    limex:disable_matrix_cache()
 
- -- Debugging LIMEX. 
+ -- Debugging LIMEX.
   local dbgWriter = GridFunctionDebugWriter(approxSpace)
   if (false) then
     limex:set_debug(dbgWriter)
@@ -136,23 +129,23 @@ else
   end
 
   -- Time step observer.
-  local vtkobserver = VTKOutputObserver("LIMEX_"..ARGS.problemID..".vtk", disc.vtk)
+  local vtkobserver = VTKOutputObserver(problem.output.file..ARGS.problemID..".vtk", disc.vtk)
   limex:attach_observer(vtkobserver)
-  
+
   --[[
     if (problem.step_post_processing) then
     local luaobserver = LuaCallbackObserver()
-  
+
   local stepClock = CuckooClock()
-  
+
   function MyLuaCallback(step, time, currdt)
-    print ("Time per step :"..stepClock:toc()) -- get time for last step 
+    print ("Time per step :"..stepClock:toc()) -- get time for last step
     local usol=luaobserver:get_current_solution()
     myProblem:step_post_processing(usol, step, time)
     stepClock:tic() -- reset timing
     return 0;
  end
-  
+
   luaobserver:set_callback("MyLuaCallback")
   limex:attach_observer(luaobserver)
  end

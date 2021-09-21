@@ -5,24 +5,21 @@ params =
 {
 --	physical parameters
 	fs_depth = util.GetParamNumber("-fsDepth", 0.2), -- depth of the free surface at the right boundary
-	fs_slope = util.GetParamNumber("-fsSlope", 0), -- initial slope of the free surface
-	
-	recharge = util.GetParamNumber("-recharge", 0.0000165), -- "rain"
+	recharge = util.GetParamNumber("-recharge", 3.3e-2), -- "rain"
 }
 
 params.baseLvl = ARGS.numPreRefs
 
 -- additional constants for vanGenuchten
-rhog = 9.81 * 1000 
+rhog = 9.81 * 1000
 
-local henry = 
-{ 
+local henry =
+{
   -- The domain specific setup
-  domain = 
+  domain =
   {
     dim = 2,
-    grid = "grids/henry_quad_2x1.ugx",
-    --grid = "grids/henry_fract.ugx",
+    grid = "grids/henry.ugx",
     numRefs = ARGS.numRefs,
     numPreRefs = ARGS.numPreRefs,
   },
@@ -32,42 +29,42 @@ local henry =
     { uid = "@Silt",
       type = "vanGenuchten",
       thetaS = 0.396, thetaR = 0.131,
-      alpha = 0.423/rhog*10, n = 2.06, 
+      alpha = 0.423/rhog*10, n = 2.06,
       Ksat = 1.0  -- Relative permeability!
-       }, 
-    
+       },
+
     { uid = "@Clay",  -- modified n
       type = "vanGenuchten",
-      alpha = 0.152/rhog*10, n = 3.06,  
-      thetaS = 0.446, thetaR = 0.1, 
+      alpha = 0.152/rhog*10, n = 3.06,
+      thetaS = 0.446, thetaR = 0.1,
       Ksat = 1.0  -- Relative permeability!
-      },  --KSat= kappa/mu*rho*g   <=> kappa = Ksat*mu/(rho*g) 
+      },  --KSat= kappa/mu*rho*g   <=> kappa = Ksat*mu/(rho*g)
     },
 
-  flow = 
+  flow =
   {
     type = "haline",
     cmp = {"p", "c"},
     boussinesq = false,
 
-    gravity = -9.81,    -- [ m s^{-2}�] ("standard", "no" or numeric value) 
-    density =           
+    gravity = -9.81,    -- [ m s^{-2}�] ("standard", "no" or numeric value)
+    density =
     { type = "linear",    -- density function ["linear", "exp", "ideal"]
       min = 1000, -- [ kg m^{-3} ] water density
       max = 1025.0,       -- [ kg m^{-3} ] saltwater density
       w_max = 1.0,
-    },  
-    
-    viscosity = 
-    { type = "const",      -- viscosity function ["const", "real"] 
-      mu0 = 1e-3        -- [ kg m^{-3} ]  
+    },
+
+    viscosity =
+    { type = "const",      -- viscosity function ["const", "real"]
+      mu0 = 1e-3        -- [ kg m^{-3} ]
     },
   },
-   medium = 
+   medium =
    {
-      {   subsets = {"Medium"}, 
+      {   subsets = {"Medium"},
           porosity = 0.35,
-          saturation = 
+          saturation =
           { type = "vanGenuchten",
             value = "@Silt",
           },
@@ -80,22 +77,22 @@ local henry =
       },
   },
 
-  initial = 
+  initial =
   {
     { cmp = "c", value = 0.0 },
-    { cmp = "p", value = "HydroPressure" },		
+    { cmp = "p", value = "HydroPressure" },
   },
 
-  boundary = 
+  boundary =
   {
     -- Sea
     { cmp = "c", type = "dirichlet", bnd = "Sea", value = 1.0 },
     { cmp = "p", type = "dirichlet", bnd = "Sea", value = "HydroPressure_bnd" },
-    
+
     -- Land
     { cmp = "c", type = "dirichlet", bnd = "Inflow", value = 0.0 },
     -- { cmp = "p", type = "flux", bnd = "Inflow", inner = "Medium", value = -3.3e-2 },
-    
+
     { cmp = "p", type = "flux", bnd = "Top", inner="Medium", value="RechargeTop"}
 
   },
@@ -109,7 +106,7 @@ local henry =
           lambdaStart		= 1,		-- start value for scaling parameter
           lambdaReduce	= 0.5,		-- reduction factor for scaling parameter
           acceptBest 		= true,		-- check for best solution if true
-          checkAll		= false		-- check all maxSteps steps if true 
+          checkAll		= false		-- check all maxSteps steps if true
       },
 
       convCheck = {
@@ -119,20 +116,20 @@ local henry =
           reduction	= 1e-7,		-- reduction factor of defect to be reached; usually 1e-6 - 1e-7
           verbose		= true			-- print convergence rates if true
       },
-      
+
       linSolver =
       {
           type = "bicgstab",			-- linear solver type ["bicgstab", "cg", "linear"]
-          precond = 
-          {	
+          precond =
+          {
               type 		= "gmg",	-- preconditioner ["gmg", "ilu", "ilut", "jac", "gs", "sgs"]
               smoother 	= {type = "ilu", overlap = true},	-- gmg-smoother ["ilu", "ilut", "jac", "gs", "sgs"]
               cycle		= "V",		-- gmg-cycle ["V", "F", "W"]
               preSmooth	= 3,		-- number presmoothing steps
               postSmooth 	= 3,		-- number postsmoothing steps
-              rap			= true,		-- comutes RAP-product instead of assembling if true 
+              rap			= true,		-- comutes RAP-product instead of assembling if true
               baseLevel	= params.baseLvl, -- gmg - baselevel
-              
+
           },
           convCheck = {
               type		= "standard",
@@ -143,8 +140,8 @@ local henry =
           }
       }
   },
-   
-  time = 
+
+  time =
   {
       control	= "limex",
       start 	= 0.0,				-- [s]  start time point
@@ -156,32 +153,30 @@ local henry =
       dtred	= 0.1,				-- [1]  reduction factor for time step
       tol 	= 1e-2,
   },
-  
-  output = 
+
+  output =
   {
-    freq	= 1, 	-- prints every x timesteps
-    binary 	= true,	-- format for vtk file	
     file = "simulations/henry2D",
     data = {"c", "p", "q", "s", "k", "rho", "mu"}
   },
 }
 
-function HydroPressure_bnd(x, y, t, si) 
+function HydroPressure_bnd(x, y, t, si)
   pp = HydroPressure(x, y)
-  if pp < 0 then return false, 0
-  else 
-  return true, pp 
+  if pp < 0 then
+    return false, 0
+  else
+    return true, pp
   end
 end
 
-function HydroPressure(x, y) 
+function HydroPressure(x, y)
   return -10055.25 * (y + params.fs_depth)
 end
 
-function RechargeTop(x, y, t, si) 
-  return -(2.0-x)*3.3e-2
+function RechargeTop(x, y, t, si)
+  return -(2.0-x)*recharge
 end
 
 
 return henry
-

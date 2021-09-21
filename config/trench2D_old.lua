@@ -17,45 +17,45 @@ local trench2D =
 
   -- list of non-linear models => translated to functions
   parameter = {  -- TODO: Parameters from List & Radu (2016)?
-    { uid = "@Sandstone",
-      type = "vanGenuchten",
-      thetaS = 0.153, thetaR = 0.250,
-      alpha = 0.79/rhog, n = 10.4,
-      Ksat = 1.08},
-
-    { uid = "@TouchetSiltLoam",
-      type = "vanGenuchten",
-      thetaS = 0.190, thetaR = 0.469,
-      alpha = 0.50/rhog, n = 7.09,
-      Ksat = 3.03},
-
-    { uid = "@SiltLoam",
+    { uid = "@Silt",
       type = "vanGenuchten",
       thetaS = 0.396, thetaR = 0.131,
       alpha = 0.423/rhog, n = 2.06,
-      Ksat = 0.0496},
+      Ksat = 1.0},--4.96e-1 -- },
 
-    { uid = "@SiltLoam",
+    { uid = "@Clay",  -- modified n
       type = "vanGenuchten",
-      thetaS = 0.446, thetaR = 0.0,
-      alpha = 0.152/rhog, n = 1.17,
-      Ksat = 8.2e-4}
+      alpha = 0.152/rhog, n = 3.06,
+      thetaS = 0.446, thetaR = 0.1,
+      Ksat= 1.0},  --KSat= kappa/mu*rho*g   <=> kappa = Ksat*mu/(rho*g)
     },
+
+  paramTable = {
+    ["DrainageTime"] = 1.0,
+  },
+
+  var ={
+    CharacteristicTime = 1.0,
+    RiseTime = 1.0,
+  },
 
   flow =
   {
+    type = "haline",
+    cmp = {"p", "c"},
     boussinesq = true,
-    gravity = Trench2D_g,    -- [m s^{-2}]
+
+    gravity = Trench2D_g,    -- [ m s^{-2}�] ("standard", "no" or numeric value)
     density =
-    { type = "ideal",    -- density function ["linear", "exp", "ideal"]
+    { type = "linear",    -- density function ["linear", "exp", "ideal"]
       min = Trench2D_rho, -- [ kg m^{-3} ] water density
-      max = 1350.0,       -- [ kg m^{-3} ] saltwater density
+      max = 1195.0,       -- [ kg m^{-3} ] saltwater density
       w_max = 1,
     },
 
     viscosity =
-    { type = "real",      -- viscosity function ["const", "real"]
-      mu0 = 1.002e-3        -- [ kg m^{-3} ]
+    { type = "const",      -- viscosity function ["const", "real"]
+      mu0 = 1e-3        -- [ kg m^{-3} ]
     },
   },
    medium =
@@ -64,14 +64,14 @@ local trench2D =
           porosity = 0.35,
           saturation =
           { type = "vanGenuchten",
-            value = "@SiltLoam",
+            value = "@Silt",
           },
           conductivity =
           { type  = "vanGenuchten",
-            value   = "@SiltLoam",
+            value   = "@Silt",
           },
           diffusion   = 18.8571e-6,   -- constant
-          permeability  = 1.019368e-9,  -- must be uid of a medium defined under parameter or number
+          permeability  = 1.019368e-9,  -- constant
       },
   },
 
@@ -87,6 +87,8 @@ local trench2D =
      {cmp = "p", type = "dirichlet", bnd = "Aquifer", value = "Trench2DAquiferBoundary" },
      {cmp = "c", type = "dirichlet", bnd = "Trench", value = 1},
      {cmp = "c", type = "dirichlet", bnd = "Aquifer", value = 0},
+
+
   },
 
   solver =
@@ -137,10 +139,10 @@ local trench2D =
   {
     control = "limex",
     start   = 0.0,    -- [s] start time point
-    stop  = 2000.0,  -- [s] end time point
+    stop  = 200.0,  -- [s] end time point  -- 10,000 years
     dt  = 0.01, -- [s] initial time step
     max_time_steps = 10000,		-- [1]	maximum number of time steps
-    dtmin	= 0.0001 * ARGS.dt,	-- [s]  minimal time step
+    dtmin	= 0.00001 * ARGS.dt,	-- [s]  minimal time step
     dtmax	= 10.0,	-- [s]  maximal time step
     dtred = 0.1,    -- [1] reduction factor for time step
     tol   = 1e-2
@@ -148,8 +150,10 @@ local trench2D =
 
   output =
   {
-    file = "simulations/trench2D/", -- needs to be a folder!
-    data = {"c", "p", "rho", "mu", "kr", "s", "q", "f", "pc", "k"}
+    freq	= 1, 	-- prints every x timesteps
+    binary 	= true,	-- format for vtk file
+    file = "simulations/levee2D",
+    data = {"c", "p", "q", "s", "k", "rho", "mu"}
   }
 
 }
@@ -164,7 +168,7 @@ function Trench2DDrainagePressureBoundaryTime(x, y, t, tD)
 end
 
 function Trench2DDrainagePressureBoundary(x, y, t)
-  return Trench2DDrainagePressureBoundaryTime(x, y, t, 220.0)
+  return Trench2DDrainagePressureBoundaryTime(x, y, t, trench2D.paramTable["DrainageTime"])
 end
 
 function Trench2DAquiferBoundary(x, y, t)

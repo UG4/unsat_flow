@@ -1,12 +1,12 @@
 <?xml version="1.0" encoding="utf-8"?>
 <grid name="defGrid">
 	<vertices coords="3">0 0 0 0 -1 0 2 -1 0 2 0 0 1 -1 0 1 0 0</vertices>
-	<edges>0 1 2 3 1 4 4 2 3 5 5 0 4 5</edges>
-	<quadrilaterals>0 1 4 5 5 4 2 3</quadrilaterals>
+	<edges>0 1 2 3 1 4 4 2 3 5 5 0 4 5 1 5 4 3</edges>
+	<triangles>0 5 1 1 5 4 4 5 3 4 2 3</triangles>
 	<subset_handler name="defSH">
 		<subset name="Medium" color="0.588235 0.588235 1 1" state="393216">
-			<edges>6</edges>
-			<faces>0 1</faces>
+			<edges>6 7 8</edges>
+			<faces>0 1 2 3</faces>
 		</subset>
 		<subset name="Top" color="1 0 0 1" state="393216">
 			<vertices>5</vertices>
@@ -29,6 +29,11 @@
 		<subset name="crease" color="1 1 1 1" state="0"/>
 		<subset name="fixed" color="1 1 1 1" state="0"/>
 	</subset_handler>
-	<selector name="defSel"/>
+	<selector name="defSel">
+		<faces>3 1</faces>
+	</selector>
+	<projection_handler name="defPH" subset_handler="0">
+		<default type="default">0 0</default>
+	</projection_handler>
 </grid>
 
