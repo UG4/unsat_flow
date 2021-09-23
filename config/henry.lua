@@ -1,4 +1,4 @@
--- config for modelling a drainage trench with constant groundwater flow
+-- config for modelling the henry problem
 
 -- command line parameters
 params =
@@ -8,10 +8,10 @@ params =
 	recharge = util.GetParamNumber("-recharge", 3.3e-2), -- "rain"
 }
 
-params.baseLvl = ARGS.numPreRefs
-
 -- additional constants for vanGenuchten
-rhog = 9.81 * 1000
+henry2D_rho = 998.23
+henry2D_g = -9.81 -- must be negative!
+rhog = (-1.0)*henry2D_rho*henry2D_g
 
 local henry =
 {
@@ -24,56 +24,63 @@ local henry =
     numPreRefs = ARGS.numPreRefs,
   },
 
-  -- list of non-linear models => translated to functions
-  parameter = {  -- TODO: Parameters from List & Radu (2016)?
-    { uid = "@Silt",
+  -- medium parameters for vanGenuchten Model
+  parameter = {
+    { uid = "@Sandstone",
+      type = "vanGenuchten",
+      thetaS = 0.153, thetaR = 0.250,
+      alpha = 0.79/rhog, n = 10.4,
+      Ksat = 1.08},
+
+    { uid = "@TouchetSiltLoam",
+      type = "vanGenuchten",
+      thetaS = 0.190, thetaR = 0.469,
+      alpha = 0.50/rhog, n = 7.09,
+      Ksat = 3.03},
+
+    { uid = "@SiltLoam",
       type = "vanGenuchten",
       thetaS = 0.396, thetaR = 0.131,
-      alpha = 0.423/rhog*10, n = 2.06,
-      Ksat = 1.0  -- Relative permeability!
-       },
+      alpha = 0.423/rhog, n = 2.06,
+      Ksat = 0.0496},
 
-    { uid = "@Clay",  -- modified n
+    { uid = "@SiltLoam",
       type = "vanGenuchten",
-      alpha = 0.152/rhog*10, n = 3.06,
-      thetaS = 0.446, thetaR = 0.1,
-      Ksat = 1.0  -- Relative permeability!
-      },  --KSat= kappa/mu*rho*g   <=> kappa = Ksat*mu/(rho*g)
+      thetaS = 0.446, thetaR = 0.0,
+      alpha = 0.152/rhog, n = 1.17,
+      Ksat = 8.2e-4}
     },
 
   flow =
   {
-    type = "haline",
-    cmp = {"p", "c"},
     boussinesq = false,
 
-    gravity = -9.81,    -- [ m s^{-2}�] ("standard", "no" or numeric value)
+    gravity = henry2D_g,      -- [ m s^{-2}], must be negative!
     density =
-    { type = "linear",    -- density function ["linear", "exp", "ideal"]
-      min = 1000, -- [ kg m^{-3} ] water density
+    { type = "ideal",     -- density function ["linear", "exp", "ideal"]
+      min = henry2D_rho,         -- [ kg m^{-3} ] water density
       max = 1025.0,       -- [ kg m^{-3} ] saltwater density
-      w_max = 1.0,
     },
 
     viscosity =
-    { type = "const",      -- viscosity function ["const", "real"]
-      mu0 = 1e-3        -- [ kg m^{-3} ]
+    { type = "real",      -- viscosity function ["const", "real"]
+      mu0 = 1.002e-3         -- [ kg m^{-3} ]
     },
   },
    medium =
    {
       {   subsets = {"Medium"},
-          porosity = 0.35,
+          porosity = "@SiltLoam", -- uid of a medium defined under parameter or number
           saturation =
           { type = "vanGenuchten",
-            value = "@Silt",
+            value = "@SiltLoam",
           },
           conductivity =
           { type  = "vanGenuchten",
-            value   = "@Silt",
+            value   = "@SiltLoam",
           },
           diffusion   = 18.8571e-6,   -- constant
-          permeability  = 1.019368e-9,  -- constant
+          permeability  = = "@SiltLoam" -- 1.019368e-9,  -- must be uid of a medium defined under parameter or number
       },
   },
 
@@ -92,7 +99,6 @@ local henry =
     -- Land
     { cmp = "c", type = "dirichlet", bnd = "Inflow", value = 0.0 },
     -- { cmp = "p", type = "flux", bnd = "Inflow", inner = "Medium", value = -3.3e-2 },
-
     { cmp = "p", type = "flux", bnd = "Top", inner="Medium", value="RechargeTop"}
 
   },
@@ -100,20 +106,20 @@ local henry =
   solver =
   {
       type = "newton",
-      lineSearch = {			   		-- ["standard", "none"]
+      lineSearch = {			   		  -- ["standard", "none"]
           type = "standard",
-          maxSteps		= 10,		-- maximum number of line search steps
-          lambdaStart		= 1,		-- start value for scaling parameter
+          maxSteps		= 10,		    -- maximum number of line search steps
+          lambdaStart		= 1,		  -- start value for scaling parameter
           lambdaReduce	= 0.5,		-- reduction factor for scaling parameter
           acceptBest 		= true,		-- check for best solution if true
-          checkAll		= false		-- check all maxSteps steps if true
+          checkAll		= false		  -- check all maxSteps steps if true
       },
 
       convCheck = {
           type		= "standard",
           iterations	= 10,			-- number of iterations
           absolute	= 1e-8,			-- absolut value of defact to be reached; usually 1e-6 - 1e-9
-          reduction	= 1e-7,		-- reduction factor of defect to be reached; usually 1e-6 - 1e-7
+          reduction	= 1e-7,		  -- reduction factor of defect to be reached; usually 1e-6 - 1e-7
           verbose		= true			-- print convergence rates if true
       },
 
@@ -122,21 +128,21 @@ local henry =
           type = "bicgstab",			-- linear solver type ["bicgstab", "cg", "linear"]
           precond =
           {
-              type 		= "gmg",	-- preconditioner ["gmg", "ilu", "ilut", "jac", "gs", "sgs"]
+              type 		= "gmg",	                          -- preconditioner ["gmg", "ilu", "ilut", "jac", "gs", "sgs"]
               smoother 	= {type = "ilu", overlap = true},	-- gmg-smoother ["ilu", "ilut", "jac", "gs", "sgs"]
-              cycle		= "V",		-- gmg-cycle ["V", "F", "W"]
-              preSmooth	= 3,		-- number presmoothing steps
-              postSmooth 	= 3,		-- number postsmoothing steps
-              rap			= true,		-- comutes RAP-product instead of assembling if true
-              baseLevel	= params.baseLvl, -- gmg - baselevel
+              cycle		= "V",		                          -- gmg-cycle ["V", "F", "W"]
+              preSmooth	= 3,		                          -- number presmoothing steps
+              postSmooth 	= 3,		                        -- number postsmoothing steps
+              rap			= true,		                          -- comutes RAP-product instead of assembling if true
+              baseLevel	= ARGS.numPreRefs,                -- gmg - baselevel
 
           },
           convCheck = {
               type		= "standard",
-              iterations	= 30,		-- number of iterations
+              iterations	= 30,		  -- number of iterations
               absolute	= 0.5e-11,	-- absolut value of defact to be reached; usually 1e-8 - 1e-10 (must be stricter / less than in newton section)
-              reduction	= 1e-9,		-- reduction factor of defect to be reached; usually 1e-7 - 1e-8 (must be stricter / less than in newton section)
-              verbose		= true,		-- print convergence rates if true
+              reduction	= 1e-9,		  -- reduction factor of defect to be reached; usually 1e-7 - 1e-8 (must be stricter / less than in newton section)
+              verbose		= true,		  -- print convergence rates if true
           }
       }
   },
@@ -144,20 +150,20 @@ local henry =
   time =
   {
       control	= "limex",
-      start 	= 0.0,				-- [s]  start time point
-      stop	= 1000.0,			-- [s]  end time point
-      max_time_steps = 10000,		-- [1]	maximum number of time steps
-      dt		= ARGS.dt,		-- [s]  initial time step
+      start 	= 0.0,				      -- [s]  start time point
+      stop	= 1000.0,			        -- [s]  end time point
+      max_time_steps = 10000,		  -- [1]	maximum number of time steps
+      dt		= ARGS.dt,		        -- [s]  initial time step
       dtmin	= 0.00001 * ARGS.dt,	-- [s]  minimal time step
-      dtmax	= 10.0,	-- [s]  maximal time step
-      dtred	= 0.1,				-- [1]  reduction factor for time step
+      dtmax	= 10.0,	              -- [s]  maximal time step
+      dtred	= 0.1,			          -- [1]  reduction factor for time step
       tol 	= 1e-2,
   },
 
   output =
   {
-    file = "simulations/henry2D",
-    data = {"c", "p", "q", "s", "k", "rho", "mu"}
+    file = "simulations/henry2D", -- needs to be a folder!
+    data = {"c", "p", "rho", "mu", "kr", "s", "q", "f", "pc", "k"}
   },
 }
 

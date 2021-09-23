@@ -68,7 +68,16 @@ function ProblemDisc:CreateElemDisc(subdom, medium)
     density:set_input(0, elemDisc["transport"]:value())
     self.rho = density
 
-    local porosity = medium.porosity -- phi
+    local porosity = nil    -- phi
+    if type(medium.porosity) == "string" then
+        for i, param in ipairs(self.problem.parameter) do
+            if param.uid == medium.porosity then
+                porosity = param.thetaS     -- the porosity is egal to the saturated water content
+            end
+        end
+    else
+        porosity = medium.porosity
+    end
 
     -- the vanGenuchten model is calculated using the Richards Plugin
     local conductivity = ProblemDisc:conductivity(medium.conductivity.value) -- k(S)
@@ -79,34 +88,37 @@ function ProblemDisc:CreateElemDisc(subdom, medium)
     -- for unsaturated flow:
     -- multiplied by relative hydraulic conductivity k(S)
     -- K = k(S) * k_sat / mu
-
     -- calculating permeability
-    print(medium.permeability)
     local permeability = nil
+    local conductivityLinker = ScaleAddLinkerMatrix()
     if type(medium.permeability) == "string" then
         Ksat = nil
-        for i, param in ipairs(self.problem.parameter) do -- for all media
+        for i, param in ipairs(self.problem.parameter) do
             if param.uid == medium.permeability then
                 Ksat = param.Ksat
             end
         end
 
         permeability = InverseLinker()
-        permeability:divide(viscosity*Ksat, density*self.problem.flow.gravity)
+        permeability:divide(viscosity*Ksat, (-1.0)*density*self.problem.flow.gravity)
+
+        -- helper linker, to be able to save the permeability in CompositeUserData object
+        local permcond = ScaleAddLinkerNumber()
+        permcond:add(permeability, conductivity)
+
+        conductivityLinker:add(permcond, 1)
 
     else
         permeability = medium.permeability
+        local conductivityLinker = ScaleAddLinkerMatrix()
+        conductivityLinker:add(conductivity, permeability)
     end
-    print(permeability)
-
-    local conductivityLinker = ScaleAddLinkerMatrix()
-    conductivityLinker:add(conductivity, permeability)
 
     -- Darcy Velocity
     -- $\vec q := -k*k(p)/mu (\grad p - \rho \vec g)$
     local DarcyVelocity = DarcyVelocityLinker()
-    DarcyVelocity:set_permeability(conductivityLinker)
     DarcyVelocity:set_viscosity(viscosity)
+    DarcyVelocity:set_permeability(conductivityLinker)
     DarcyVelocity:set_pressure_gradient(elemDisc["flow"]:gradient())
     DarcyVelocity:set_density(density)
     DarcyVelocity:set_gravity(self.gravity)
@@ -192,7 +204,10 @@ function ProblemDisc:CreateElemDisc(subdom, medium)
     self.CompositeSaturation:add(si, saturation)
     self.CompositeDarcyVelocity:add(si, DarcyVelocity)
     self.CompositeFlux:add(si, fluidFlux)
-    --self.CompositePermeability:add(si, permeability)
+    print(type(permeability))
+    if type(permeability) ~= "number" then
+        self.CompositePermeability:add(si, permeability)
+    end
 
     return elemDisc
 end
@@ -283,7 +298,7 @@ function ProblemDisc:CreateVTKOutput()
             self.vtk:select(self.CompositeCapillary, v)
         -- permeability
         elseif v == "k" then
-            --self.vtk:select(self.CompositePermeability, v)
+            self.vtk:select(self.CompositePermeability, v)
         end
 
     end

@@ -1,7 +1,7 @@
 -- config for modelling a drainage trench with constant groundwater flow
 
 Trench2D_rho = 998.23
-Trench2D_g = -9.81
+Trench2D_g = -9.81 -- must be negative!
 rhog = (-1.0)*Trench2D_rho*Trench2D_g
 
 local trench2D =
@@ -15,8 +15,7 @@ local trench2D =
     numPreRefs = ARGS.numPreRefs,
   },
 
-  -- list of non-linear models => translated to functions
-  parameter = {  -- TODO: Parameters from List & Radu (2016)?
+  parameter = {
     { uid = "@Sandstone",
       type = "vanGenuchten",
       thetaS = 0.153, thetaR = 0.250,
@@ -44,24 +43,24 @@ local trench2D =
 
   flow =
   {
-    boussinesq = true,
-    gravity = Trench2D_g,    -- [m s^{-2}]
+    boussinesq = false,
+
+    gravity = Trench2D_g, -- [m s^{-2}]
     density =
-    { type = "ideal",    -- density function ["linear", "exp", "ideal"]
+    { type = "ideal",     -- density function ["linear", "exp", "ideal"]
       min = Trench2D_rho, -- [ kg m^{-3} ] water density
-      max = 1350.0,       -- [ kg m^{-3} ] saltwater density
-      w_max = 1,
+      max = 1025.0,       -- [ kg m^{-3} ] saltwater density
     },
 
     viscosity =
     { type = "real",      -- viscosity function ["const", "real"]
-      mu0 = 1.002e-3        -- [ kg m^{-3} ]
+      mu0 = 1.002e-3      -- [ kg m^{-3} ]
     },
   },
    medium =
    {
       {   subsets = {"Inner"},
-          porosity = 0.35,
+          porosity = "@SiltLoam",
           saturation =
           { type = "vanGenuchten",
             value = "@SiltLoam",
@@ -71,7 +70,7 @@ local trench2D =
             value   = "@SiltLoam",
           },
           diffusion   = 18.8571e-6,   -- constant
-          permeability  = 1.019368e-9,  -- must be uid of a medium defined under parameter or number
+          permeability  = "@SiltLoam" -- 1.019368e-9,  -- must be uid of a medium defined under parameter or number
       },
   },
 
@@ -92,21 +91,21 @@ local trench2D =
   solver =
   {
       type = "newton",
-      lineSearch = {			   		-- ["standard", "none"]
+      lineSearch = {			   		  -- ["standard", "none"]
           type = "standard",
-          maxSteps		= 10,		-- maximum number of line search steps
-          lambdaStart		= 1,		-- start value for scaling parameter
-          lambdaReduce	= 0.5,		-- reduction factor for scaling parameter
-          acceptBest 		= true,		-- check for best solution if true
-          checkAll		= false		-- check all maxSteps steps if true
+          maxSteps		= 10,		    -- maximum number of line search steps
+          lambdaStart		= 1,		  -- start value for scaling parameter
+          lambdaReduce	= 0.5,    -- reduction factor for scaling parameter
+          acceptBest 		= true,   -- check for best solution if true
+          checkAll		= false		  -- check all maxSteps steps if true
       },
 
       convCheck = {
           type		= "standard",
-          iterations	= 128,			-- number of iterations
-          absolute	= 1e-8,			-- absolut value of defact to be reached; usually 1e-6 - 1e-9
-          reduction	= 1e-7,		-- reduction factor of defect to be reached; usually 1e-6 - 1e-7
-          verbose		= true			-- print convergence rates if true
+          iterations	= 128,    -- number of iterations
+          absolute	= 1e-8,	    -- absolut value of defact to be reached; usually 1e-6 - 1e-9
+          reduction	= 1e-7,		  -- reduction factor of defect to be reached; usually 1e-6 - 1e-7
+          verbose		= true	    -- print convergence rates if true
       },
 
       linSolver =
@@ -114,13 +113,13 @@ local trench2D =
           type = "bicgstab",			-- linear solver type ["bicgstab", "cg", "linear"]
           precond =
           {
-              type 		= "gmg",	-- preconditioner ["gmg", "ilu", "ilut", "jac", "gs", "sgs"]
+              type 		= "gmg",	                          -- preconditioner ["gmg", "ilu", "ilut", "jac", "gs", "sgs"]
               smoother 	= {type = "ilu", overlap = true},	-- gmg-smoother ["ilu", "ilut", "jac", "gs", "sgs"]
-              cycle		= "V",		-- gmg-cycle ["V", "F", "W"]
-              preSmooth	= 3,		-- number presmoothing steps
-              postSmooth 	= 3,		-- number postsmoothing steps
-              rap			= true,		-- comutes RAP-product instead of assembling if true
-              baseLevel	= ARGS.numPreRefs, -- gmg - baselevel
+              cycle		= "V",		                          -- gmg-cycle ["V", "F", "W"]
+              preSmooth	= 3,		                          -- number presmoothing steps
+              postSmooth 	= 3,		                        -- number postsmoothing steps
+              rap			= true,		                          -- comutes RAP-product instead of assembling if true
+              baseLevel	= ARGS.numPreRefs,                -- gmg - baselevel
 
           },
           convCheck = {
@@ -136,13 +135,13 @@ local trench2D =
   time =
   {
     control = "limex",
-    start   = 0.0,    -- [s] start time point
-    stop  = 2000.0,  -- [s] end time point
-    dt  = 0.01, -- [s] initial time step
-    max_time_steps = 10000,		-- [1]	maximum number of time steps
-    dtmin	= 0.0001 * ARGS.dt,	-- [s]  minimal time step
-    dtmax	= 10.0,	-- [s]  maximal time step
-    dtred = 0.1,    -- [1] reduction factor for time step
+    start   = 0.0,          -- [s] start time point
+    stop  = 2000.0,         -- [s] end time point
+    dt  = 0.01,             -- [s] initial time step
+    max_time_steps = 10000, -- [1]	maximum number of time steps
+    dtmin	= 0.01 * ARGS.dt,	-- [s]  minimal time step
+    dtmax	= 10.0,	          -- [s]  maximal time step
+    dtred = 0.1,            -- [1] reduction factor for time step
     tol   = 1e-2
   },
 
