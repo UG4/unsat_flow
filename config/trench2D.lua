@@ -34,7 +34,7 @@ local trench2D =
       alpha = 0.423/rhog, n = 2.06,
       Ksat = 0.0496},
 
-    { uid = "@SiltLoam",
+    { uid = "@Clay",
       type = "vanGenuchten",
       thetaS = 0.446, thetaR = 0.0,
       alpha = 0.152/rhog, n = 1.17,
@@ -60,7 +60,7 @@ local trench2D =
    medium =
    {
       {   subsets = {"Inner"},
-          porosity = "@SiltLoam",
+          porosity = "@SiltLoam", -- uid of a material or number
           saturation =
           { type = "vanGenuchten",
             value = "@SiltLoam",
@@ -70,7 +70,7 @@ local trench2D =
             value   = "@SiltLoam",
           },
           diffusion   = 18.8571e-6,   -- constant
-          permeability  = "@SiltLoam" -- 1.019368e-9,  -- must be uid of a medium defined under parameter or number
+          permeability  = "@SiltLoam" -- 1.019368e-9,  -- uid of a material or number
       },
   },
 
@@ -136,10 +136,10 @@ local trench2D =
   {
     control = "limex",
     start   = 0.0,          -- [s] start time point
-    stop  = 2000.0,         -- [s] end time point
-    dt  = 0.01,             -- [s] initial time step
-    max_time_steps = 10000, -- [1]	maximum number of time steps
-    dtmin	= 0.01 * ARGS.dt,	-- [s]  minimal time step
+    stop  = 20000.0,         -- [s] end time point
+    dt  = 1,             -- [s] initial time step
+    max_time_steps = 20000, -- [1]	maximum number of time steps
+    dtmin	= ARGS.dt,	-- [s]  minimal time step
     dtmax	= 10.0,	          -- [s]  maximal time step
     dtred = 0.1,            -- [1] reduction factor for time step
     tol   = 1e-2
@@ -163,7 +163,7 @@ function Trench2DDrainagePressureBoundaryTime(x, y, t, tD)
 end
 
 function Trench2DDrainagePressureBoundary(x, y, t)
-  return Trench2DDrainagePressureBoundaryTime(x, y, t, 220.0)
+  return Trench2DDrainagePressureBoundaryTime(x, y, t, 5000.0)
 end
 
 function Trench2DAquiferBoundary(x, y, t)

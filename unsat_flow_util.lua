@@ -60,7 +60,7 @@ function ProblemDisc:CreateElemDisc(subdom, medium)
     -- local viscosity = self.mu
     local viscosity = self:viscosity()
     if self.problem.flow.viscosity.type ~= "const" then
-       viscosity:set_input(0, elemDisc["transport"]:value())
+        viscosity:set_input(0, elemDisc["transport"]:value())
     end
     self.mu = viscosity
 
@@ -72,7 +72,7 @@ function ProblemDisc:CreateElemDisc(subdom, medium)
     if type(medium.porosity) == "string" then
         for i, param in ipairs(self.problem.parameter) do
             if param.uid == medium.porosity then
-                porosity = param.thetaS     -- the porosity is egal to the saturated water content
+                porosity = param.thetaS     -- the porosity is equal to the saturated water content
             end
         end
     else
@@ -83,14 +83,21 @@ function ProblemDisc:CreateElemDisc(subdom, medium)
     local conductivity = ProblemDisc:conductivity(medium.conductivity.value) -- k(S)
     local saturation = ProblemDisc:saturation(medium.saturation.value) -- S
 
+    -- volumetric fraction of the fluidphase in the porous media
+    volufrac = ScaleAddLinkerNumber()
+    volufrac:add(porosity, saturation)
+
     -- hydraulic conductivity in saturated medium
     -- K_s = k / mu
     -- for unsaturated flow:
     -- multiplied by relative hydraulic conductivity k(S)
-    -- K = k(S) * k_sat / mu
+    -- K = k(S) * k / mu
     -- calculating permeability
     local permeability = nil
     local conductivityLinker = ScaleAddLinkerMatrix()
+    -- if K_sat is given by the van Genuchten modell, the permeability needs to be
+    -- calculated by dividing K_sat by density times gravity and multipling with
+    -- the dynamic viscosity
     if type(medium.permeability) == "string" then
         Ksat = nil
         for i, param in ipairs(self.problem.parameter) do
@@ -123,24 +130,20 @@ function ProblemDisc:CreateElemDisc(subdom, medium)
     DarcyVelocity:set_density(density)
     DarcyVelocity:set_gravity(self.gravity)
 
-    -- molecular diffusion
-    local diffusion = ScaleAddLinkerMatrix()
-    diffusion:add(porosity, medium.diffusion)
 
 	-----------------------------------------
 	-- Equation [1]
 	-----------------------------------------
 	-- flow equation
-	-- $\partial_t (\Phi \rho_w S_w)
-	--		+ \nabla \cdot [\rho_w \vec{v}_w] = \rho_w \Gamma_w$
+	-- $\partial_t (\Phi S_w \rho_w)
+	--		+ \nabla \cdot (\rho_w \vec{v}_w) = \rho_w \Gamma_w$
 
-	-- fluid storage: \Phi \rho_w S_w
+	-- fluid storage: \Phi S_w \rho_w
     local storage = ScaleAddLinkerNumber()
-	-- flux \rho_w \vec{v}_w
+    storage:add(volufrac, density)
+	-- flux of the fluid phase \rho_w \vec{v}_w
     local fluidFlux = ScaleAddLinkerVector()
-
-     storage:add(porosity*density, saturation) -- INSERT: saturation  or 1.0
-     fluidFlux:add(density, DarcyVelocity)
+    fluidFlux:add(density, DarcyVelocity)
 
     if self.problem.flow.boussinesq then
         -- boussinesq fluid storage: \Phi \rho_w0 S_w
@@ -148,7 +151,7 @@ function ProblemDisc:CreateElemDisc(subdom, medium)
         -- boussinesq flux \rho_w0 \vec{v}_w
         local fluidFluxB = ScaleAddLinkerVector()
 
-        storageB:add(porosity*self.problem.flow.density.min, saturation)
+        storageB:add(volufrac, self.problem.flow.density.min)
         fluidFluxB:add(self.problem.flow.density.min, DarcyVelocity)
 
         elemDisc["flow"]:set_mass(storageB)
@@ -168,12 +171,19 @@ function ProblemDisc:CreateElemDisc(subdom, medium)
 	-----------------------------------------
 	-- transport convection and diffusion => transport equation
 	-- $\partial_t (\Phi \rho_w S_w \omega)
-	-- 		+ \nabla \cdot [\rho_w \omega \vec{v}_w - \rho_w D \nabla \omega]
-	--			= \rho_w \omega \Gamma_w$
+	-- 		+ \nabla \cdot \phi S_w (\rho_w \omega q - \rho_w D \nabla \omega)
+	--			= \phi S_w \rho_w \Gamma_w$
+
+    -- diffusive flux: \phi S_w \rho_w D
+    local diffusion = ScaleAddLinkerMatrix()
+    diffusion:add(storage, medium.diffusion)
+
+    local transportFlux = ScaleAddLinkerVector()
+    transportFlux:add(storage, DarcyVelocity)
 
     elemDisc["transport"]:set_mass(0.0)
     elemDisc["transport"]:set_mass_scale(storage)
-    elemDisc["transport"]:set_velocity(fluidFlux)
+    elemDisc["transport"]:set_velocity(transportFlux)
     elemDisc["transport"]:set_diffusion(diffusion)
     elemDisc["transport"]:set_upwind(myUpwind)
 
