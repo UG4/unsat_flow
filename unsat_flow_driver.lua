@@ -97,7 +97,7 @@ else
     --local spaceC = L2ComponentSpace("c", 2, inst.coef.Conductivity2)
     local spaceC = L2ComponentSpace("c", 2)
     --local spaceP = VelEnergyComponentSpace("p", 2, ConstUserMatrix(1.0))
-    local spaceP = H1ComponentSpace("c", 2)
+    local spaceP = H1ComponentSpace("p", 2)
 
     weightedMetricSpace:add(spaceP)
     weightedMetricSpace:add(spaceC)

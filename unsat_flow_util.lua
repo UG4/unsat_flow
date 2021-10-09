@@ -87,15 +87,15 @@ function ProblemDisc:CreateElemDisc(subdom, medium)
     volufrac = ScaleAddLinkerNumber()
     volufrac:add(porosity, saturation)
 
-    -- hydraulic conductivity in saturated medium
-    -- K_s = k / mu
+    -- hydraulic conductivity in saturated medium is given by darcys law
+    -- k_f = K*rho*g / mu
     -- for unsaturated flow:
-    -- multiplied by relative hydraulic conductivity k(S)
-    -- K = k(S) * k / mu
+    -- multiplied by relative hydraulic conductivity K(S)
+    -- k_f = K(S) * K * rho * g / mu
     -- calculating permeability
     local permeability = nil
     local conductivityLinker = ScaleAddLinkerMatrix()
-    -- if K_sat is given by the van Genuchten modell, the permeability needs to be
+    -- if K is given by the van Genuchten modell, the permeability needs to be
     -- calculated by dividing K_sat by density times gravity and multipling with
     -- the dynamic viscosity
     if type(medium.permeability) == "string" then
@@ -214,7 +214,6 @@ function ProblemDisc:CreateElemDisc(subdom, medium)
     self.CompositeSaturation:add(si, saturation)
     self.CompositeDarcyVelocity:add(si, DarcyVelocity)
     self.CompositeFlux:add(si, fluidFlux)
-    print(type(permeability))
     if type(permeability) ~= "number" then
         self.CompositePermeability:add(si, permeability)
     end
@@ -283,8 +282,11 @@ function ProblemDisc:CreateVTKOutput()
     -- for future reference; util.Balance()
     for i, v in ipairs(self.problem.output.data) do
         -- concentration and pressure
-        if v == "p" or v == "c" then
-           self.vtk:select_nodal(GridFunctionNumberData(self.u, v), v)
+        if v == "p" then
+           self.vtk:select_nodal(GridFunctionNumberData(self.u, v)/self.problem.output.scale^2, v)
+        -- concentration
+        elseif v == "c" then
+            self.vtk:select_nodal(GridFunctionNumberData(self.u, v), v)
         -- density
         elseif v == "rho" then
             self.vtk:select_element(self.rho, v)
