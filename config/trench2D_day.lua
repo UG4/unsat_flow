@@ -55,7 +55,7 @@ local trench2D =
 
     viscosity =
     { type = "real",      -- viscosity function ["const", "real"]
-      mu0 = 1.002e-3      -- [ kg m^{-3} ]
+      mu0 = 1.002e-3      -- [ Pa s ]
     },
   },
   medium =
@@ -163,7 +163,7 @@ function Trench2DDrainagePressureBoundaryTime(x, y, t, tD)
   if (t <= tD) then
     return true, (2.2*t / tD - 2.0) * (-1.0) * rhog
   else
-    return true, 0.2  * (-1.0) * rhog
+    return true, 0.2 * rhog
   end
 end
 

@@ -292,8 +292,8 @@ function ProblemDisc:CreateVTKOutput()
             self.vtk:select_element(self.rho, v)
         -- viscosity
         elseif v == "mu" and self.problem.flow.viscosity.type ~= "const" then
-            self.vtk:select_element(self.mu, v)
-        -- conductivity
+            self.vtk:select_element(self.mu/self.problem.output.scale, v)
+        -- relative conductivity
         elseif v == "kr" then
             self.vtk:select_element(self.CompositeConductivity, v)
         -- saturation
@@ -301,13 +301,13 @@ function ProblemDisc:CreateVTKOutput()
             self.vtk:select_element(self.CompositeSaturation, v)
         -- darcy velocity
         elseif v == "q" then
-            self.vtk:select_element(self.CompositeDarcyVelocity, v)
+            self.vtk:select_element(self.CompositeDarcyVelocity*self.problem.output.scale, v)
         -- transport equation flux
         elseif v == "f" then
             self.vtk:select_element(self.CompositeFlux, v)
         -- capillary pressure
         elseif v == "pc" then
-            self.vtk:select(self.CompositeCapillary, v)
+            self.vtk:select(self.CompositeCapillary/self.problem.output.scale^2, v)
         -- permeability
         elseif v == "k" then
             self.vtk:select(self.CompositePermeability, v)
