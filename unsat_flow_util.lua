@@ -206,13 +206,12 @@ function ProblemDisc:CreateElemDisc(subdom, medium)
 
     print("Created Element Discretisation for Subset ", subdom)
 
-
     -- Preparations for IO.
     local si = self.domain:subset_handler():get_subset_index(subdom)
-    self.CompositeCapillary:add(si, capillary)
+    self.CompositeCapillary:add(si, capillary/self.problem.output.scale^2)
     self.CompositeConductivity:add(si, conductivity)
     self.CompositeSaturation:add(si, saturation)
-    self.CompositeDarcyVelocity:add(si, DarcyVelocity)
+    self.CompositeDarcyVelocity:add(si, DarcyVelocity*self.problem.output.scale)
     self.CompositeFlux:add(si, fluidFlux)
     if type(permeability) ~= "number" then
         self.CompositePermeability:add(si, permeability)
@@ -301,13 +300,13 @@ function ProblemDisc:CreateVTKOutput()
             self.vtk:select_element(self.CompositeSaturation, v)
         -- darcy velocity
         elseif v == "q" then
-            self.vtk:select_element(self.CompositeDarcyVelocity*self.problem.output.scale, v)
+            self.vtk:select_element(self.CompositeDarcyVelocity, v)
         -- transport equation flux
         elseif v == "f" then
             self.vtk:select_element(self.CompositeFlux, v)
         -- capillary pressure
         elseif v == "pc" then
-            self.vtk:select(self.CompositeCapillary/self.problem.output.scale^2, v)
+            self.vtk:select(self.CompositeCapillary, v)
         -- permeability
         elseif v == "k" then
             self.vtk:select(self.CompositePermeability, v)
