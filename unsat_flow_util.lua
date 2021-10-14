@@ -83,10 +83,6 @@ function ProblemDisc:CreateElemDisc(subdom, medium)
     local conductivity = ProblemDisc:conductivity(medium.conductivity.value) -- k(S)
     local saturation = ProblemDisc:saturation(medium.saturation.value) -- S
 
-    -- volumetric fraction of the fluidphase in the porous media
-    volufrac = ScaleAddLinkerNumber()
-    volufrac:add(porosity, saturation)
-
     -- hydraulic conductivity in saturated medium is given by darcys law
     -- k_f = K*rho*g / mu
     -- for unsaturated flow:
@@ -140,18 +136,19 @@ function ProblemDisc:CreateElemDisc(subdom, medium)
 
 	-- fluid storage: \Phi S_w \rho_w
     local storage = ScaleAddLinkerNumber()
-    storage:add(volufrac, density)
+    storage:add(porosity*density, saturation)
 	-- flux of the fluid phase \rho_w \vec{v}_w
     local fluidFlux = ScaleAddLinkerVector()
     fluidFlux:add(density, DarcyVelocity)
 
+    -- oberbeck-boussinesq approximation
     if self.problem.flow.boussinesq then
         -- boussinesq fluid storage: \Phi \rho_w0 S_w
         local storageB = ScaleAddLinkerNumber()
         -- boussinesq flux \rho_w0 \vec{v}_w
         local fluidFluxB = ScaleAddLinkerVector()
 
-        storageB:add(volufrac, self.problem.flow.density.min)
+        storageB:add(porosity*self.problem.flow.density.min, saturation)
         fluidFluxB:add(self.problem.flow.density.min, DarcyVelocity)
 
         elemDisc["flow"]:set_mass(storageB)
@@ -171,42 +168,41 @@ function ProblemDisc:CreateElemDisc(subdom, medium)
 	-----------------------------------------
 	-- transport convection and diffusion => transport equation
 	-- $\partial_t (\Phi \rho_w S_w \omega)
-	-- 		+ \nabla \cdot \phi S_w (\rho_w \omega q - \rho_w D \nabla \omega)
+	-- 		+ \nabla \cdot (\rho_w \omega q - \rho_w,min D \nabla \omega)
 	--			= \phi S_w \rho_w \Gamma_w$
 
-    -- diffusive flux: \phi S_w \rho_w D
+    -- diffusive flux: \rho_w D \nabla \omega
     local diffusion = ScaleAddLinkerMatrix()
-    diffusion:add(storage, medium.diffusion)
+    diffusion:add(self.problem.flow.density.min, medium.diffusion)
 
-    local transportFlux = ScaleAddLinkerVector()
-    transportFlux:add(storage, DarcyVelocity)
+    -- advective flux: \rho_w \omega q
+    local advectiveFlux = ScaleAddLinkerVector()
+    advectiveFlux:add(density, DarcyVelocity)
 
     elemDisc["transport"]:set_mass(0.0)
     elemDisc["transport"]:set_mass_scale(storage)
-    elemDisc["transport"]:set_velocity(transportFlux)
+    elemDisc["transport"]:set_velocity(advectiveFlux)
     elemDisc["transport"]:set_diffusion(diffusion)
     elemDisc["transport"]:set_upwind(myUpwind)
 
-    -- setting inputs
+    -- capillary pressure: air pressure is set to 0
+    -- => p_c = - p_w
     local capillary = -1.0*elemDisc["flow"]:value()
 
-    if medium.conductivity.type == "exp" then
-        conductivity:set_input(0, capillary)
-
-    elseif medium.conductivity.type == "vanGenuchten" then
+    -- setting capillary pressure as inputs for the van Genuchten model
+    if medium.conductivity.type == "vanGenuchten" then
         conductivity:set_capillary(capillary)
     end
 
-    if medium.saturation.type == "exp" then
-        saturation:set_input(0, capillary)
-
-    elseif medium.saturation.type == "vanGenuchten" then
+    if medium.saturation.type == "vanGenuchten" then
         saturation:set_capillary(capillary)
     end
 
     print("Created Element Discretisation for Subset ", subdom)
 
-    -- Preparations for IO.
+    -- Preparations for IO. variables may be given in units other than seconds
+    -- they may have to be converted back to seconds using the scaling factor
+    -- given at problem.output.scale
     local si = self.domain:subset_handler():get_subset_index(subdom)
     self.CompositeCapillary:add(si, capillary/self.problem.output.scale^2)
     self.CompositeConductivity:add(si, conductivity)

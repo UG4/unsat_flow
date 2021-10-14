@@ -48,7 +48,7 @@ local trench2D =
 
     gravity = Trench2D_g, -- [m s^{-2}]
     density =
-    { type = "linear",     -- density function ["linear", "exp", "ideal"]
+    { type = "ideal",     -- density function ["linear", "exp", "ideal"]
       min = Trench2D_rho, -- [ kg m^{-3} ] water density
       max = 1025.0,       -- [ kg m^{-3} ] saltwater density
     },
@@ -139,7 +139,7 @@ local trench2D =
     start   = 0.0,            -- [s] start time point
     stop  = tstop,            -- [s] end time point
     dt  = tstop/50,           -- [s] initial time step
-    max_time_steps = 10000,   -- [1]	maximum number of time steps
+    max_time_steps = 1000,    -- [1]	maximum number of time steps
     dtmin	= ARGS.dt,	        -- [s]  minimal time step
     dtmax	= tstop/10,	        -- [s]  maximal time step
     dtred = 0.5,              -- [1] reduction factor for time step
@@ -161,7 +161,7 @@ local trench2D =
 
 function Trench2DDrainagePressureBoundaryTime(x, y, t, tD)
   if (t <= tD) then
-    return true, (2.2*t / tD - 2.0) * (-1.0) * rhog
+    return true, (2.2*t / tD - 2.0) * rhog
   else
     return true, 0.2 * rhog
   end
@@ -181,4 +181,5 @@ end
 
 return trench2D
 
--- ugshell -ex unsat_flow_app/unsat_flow_driver.lua --problem-id "trench2D_day" --dt 0.0000001
+-- mpirun -np 6 ugshell -ex unsat_flow_app/unsat_flow_driver.lua --problem-id "trench2D_day" --dt 0.0000001
+-- mpirun --use-hwthread-cpus ugshell -ex unsat_flow_app/unsat_flow_driver.lua --problem-id "trench2D_day" --dt 0.0000001
