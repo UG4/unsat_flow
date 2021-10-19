@@ -57,7 +57,6 @@ function ProblemDisc:CreateElemDisc(subdom, medium)
 	-- transport equation
     elemDisc["transport"] = ConvectionDiffusion("c", subdom, "fv1")
 
-    -- local viscosity = self.mu
     local viscosity = self:viscosity()
     if self.problem.flow.viscosity.type ~= "const" then
         viscosity:set_input(0, elemDisc["transport"]:value())
@@ -88,7 +87,6 @@ function ProblemDisc:CreateElemDisc(subdom, medium)
     -- for unsaturated flow:
     -- multiplied by relative hydraulic conductivity K(S)
     -- k_f = K(S) * K * rho * g / mu
-    -- calculating permeability
     local permeability = nil
     local conductivityLinker = ScaleAddLinkerMatrix()
     -- if K is given by the van Genuchten modell, the permeability needs to be
@@ -126,6 +124,8 @@ function ProblemDisc:CreateElemDisc(subdom, medium)
     DarcyVelocity:set_density(density)
     DarcyVelocity:set_gravity(self.gravity)
 
+    local volufrac = ScaleAddLinkerNumber()
+    volufrac:add(porosity, saturation)
 
 	-----------------------------------------
 	-- Equation [1]
@@ -136,7 +136,7 @@ function ProblemDisc:CreateElemDisc(subdom, medium)
 
 	-- fluid storage: \Phi S_w \rho_w
     local storage = ScaleAddLinkerNumber()
-    storage:add(porosity*density, saturation)
+    storage:add(volufrac, density)
 	-- flux of the fluid phase \rho_w \vec{v}_w
     local fluidFlux = ScaleAddLinkerVector()
     fluidFlux:add(density, DarcyVelocity)
@@ -168,12 +168,12 @@ function ProblemDisc:CreateElemDisc(subdom, medium)
 	-----------------------------------------
 	-- transport convection and diffusion => transport equation
 	-- $\partial_t (\Phi \rho_w S_w \omega)
-	-- 		+ \nabla \cdot (\rho_w \omega q - \rho_w,min D \nabla \omega)
+	-- 		+ \nabla \cdot (\rho_w \omega q - \Phi S_w \rho_w,min D \nabla \omega)
 	--			= \phi S_w \rho_w \Gamma_w$
 
-    -- diffusive flux: \rho_w D \nabla \omega
+    -- diffusive flux: \Phi S_w \rho_w D \nabla \omega
     local diffusion = ScaleAddLinkerMatrix()
-    diffusion:add(self.problem.flow.density.min, medium.diffusion)
+    diffusion:add(self.problem.flow.density.min*volufrac, medium.diffusion)
 
     -- advective flux: \rho_w \omega q
     local advectiveFlux = ScaleAddLinkerVector()
@@ -203,12 +203,22 @@ function ProblemDisc:CreateElemDisc(subdom, medium)
     -- Preparations for IO. variables may be given in units other than seconds
     -- they may have to be converted back to seconds using the scaling factor
     -- given at problem.output.scale
+    local advFlux = ScaleAddLinkerVector()
+    advFlux:add(elemDisc["transport"]:value(), advectiveFlux)
+
+    local gradC = GridFunctionGradientData(self.u, "c")
+    local difFlux = ScaleAddLinkerVector()
+    difFlux:add(self.problem.flow.density.min*medium.diffusion, gradC*volufrac)
+
     local si = self.domain:subset_handler():get_subset_index(subdom)
     self.CompositeCapillary:add(si, capillary/self.problem.output.scale^2)
     self.CompositeConductivity:add(si, conductivity)
     self.CompositeSaturation:add(si, saturation)
     self.CompositeDarcyVelocity:add(si, DarcyVelocity*self.problem.output.scale)
-    self.CompositeFlux:add(si, fluidFlux)
+    self.CompositeFluidFlux:add(si, fluidFlux)
+    self.CompositeTransportFlux:add(si, (advFlux - difFlux)*self.problem.output.scale)
+    self.CompositeAdvectiveFlux:add(si, advFlux*self.problem.output.scale)
+    self.CompositeDiffusiveFlux:add(si, difFlux*self.problem.output.scale)
     if type(permeability) ~= "number" then
         self.CompositePermeability:add(si, permeability)
     end
@@ -228,7 +238,10 @@ function ProblemDisc:CreateDomainDisc(approxSpace)
     self.CompositeConductivity = CompositeUserNumber(false)
     self.CompositeSaturation = CompositeUserNumber(false)
     self.CompositeDarcyVelocity = CompositeUserVector(false)
-    self.CompositeFlux = CompositeUserVector(false)
+    self.CompositeFluidFlux = CompositeUserVector(false)
+    self.CompositeTransportFlux = CompositeUserVector(false)
+    self.CompositeAdvectiveFlux = CompositeUserVector(false)
+    self.CompositeDiffusiveFlux = CompositeUserVector(false)
     self.CompositePermeability = CompositeUserNumber(false)
 
     for i,medium in ipairs(self.problem.medium) do -- for all media
@@ -298,8 +311,16 @@ function ProblemDisc:CreateVTKOutput()
         elseif v == "q" then
             self.vtk:select_element(self.CompositeDarcyVelocity, v)
         -- transport equation flux
-        elseif v == "f" then
-            self.vtk:select_element(self.CompositeFlux, v)
+        elseif v == "ff" then
+            self.vtk:select_element(self.CompositeFluidFlux, v)
+        elseif v == "tf" then
+            self.vtk:select_element(self.CompositeTransportFlux, v)
+        -- advective flux
+        elseif v == "af" then
+            self.vtk:select_element(self.CompositeAdvectiveFlux, v)
+        -- diffusive flux
+        elseif v == "df" then
+            self.vtk:select_element(self.CompositeDiffusiveFlux, v)
         -- capillary pressure
         elseif v == "pc" then
             self.vtk:select(self.CompositeCapillary, v)

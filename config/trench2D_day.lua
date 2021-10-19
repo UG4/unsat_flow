@@ -149,7 +149,7 @@ local trench2D =
   output =
   {
     file = "simulations/trench2D_day/", -- needs to be a folder!
-    data = {"c", "p", "rho", "mu", "kr", "s", "q", "f", "pc", "k"},
+    data = {"c", "p", "rho", "mu", "kr", "s", "q", "ff", "tf", "af", "df", "pc", "k"},
     -- scaling factor for correct time units.
     -- 1 means all units are given in seconds
     -- if units are scaled to days, then the scaling factor should be 86400
