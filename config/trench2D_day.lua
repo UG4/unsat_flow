@@ -55,7 +55,7 @@ local trench2D =
 
     viscosity =
     { type = "real",      -- viscosity function ["const", "real"]
-      mu0 = 1.002e-3      -- [ Pa s ]
+      mu0 = 1.16e-8       -- [ Pa s ]
     },
   },
   medium =
