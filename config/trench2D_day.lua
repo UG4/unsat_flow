@@ -57,6 +57,7 @@ local trench2D =
     { type = "real",      -- viscosity function ["const", "real"]
       mu0 = 1.16e-8       -- [ Pa s ]
     },
+    diffusion   = 1.63    -- [m^2/day]
   },
   medium =
   {
@@ -89,47 +90,23 @@ local trench2D =
      {cmp = "c", type = "dirichlet", bnd = "Aquifer", value = 0},
   },
 
-  solver =
-  {
-      type = "newton",
-      lineSearch = {			   		  -- ["standard", "none"]
-          type = "standard",
-          maxSteps		= 10,		    -- maximum number of line search steps
-          lambdaStart		= 1,		  -- start value for scaling parameter
-          lambdaReduce	= 0.5,    -- reduction factor for scaling parameter
-          acceptBest 		= true,   -- check for best solution if true
-          checkAll		= false		  -- check all maxSteps steps if true
-      },
-
-      convCheck = {
-          type		= "standard",
-          iterations	= 128,    -- number of iterations
-          absolute	= 1e-8,	    -- absolut value of defact to be reached; usually 1e-6 - 1e-9
-          reduction	= 1e-7,		  -- reduction factor of defect to be reached; usually 1e-6 - 1e-7
-          verbose		= true	    -- print convergence rates if true
-      },
-
-      linSolver =
-      {
-          type = "bicgstab",			-- linear solver type ["bicgstab", "cg", "linear"]
-          precond =
-          {
-              type 		= "gmg",	                          -- preconditioner ["gmg", "ilu", "ilut", "jac", "gs", "sgs"]
-              smoother 	= {type = "ilu", overlap = true},	-- gmg-smoother ["ilu", "ilut", "jac", "gs", "sgs"]
-              cycle		= "V",		                          -- gmg-cycle ["V", "F", "W"]
-              preSmooth	= 3,		                          -- number presmoothing steps
-              postSmooth 	= 3,		                        -- number postsmoothing steps
-              rap			= true,		                          -- comutes RAP-product instead of assembling if true
-              baseLevel	= ARGS.numPreRefs,                -- gmg - baselevel
-
-          },
-          convCheck = {
-              type		= "standard",
-              iterations	= 30,		-- number of iterations
-              absolute	= 0.5e-8,	-- absolut value of defact to be reached; usually 1e-8 - 1e-10 (must be stricter / less than in newton section)
-              reduction	= 1e-7,		-- reduction factor of defect to be reached; usually 1e-7 - 1e-8 (must be stricter / less than in newton section)
-              verbose		= true,		-- print convergence rates if true
-          }
+  linSolver =
+  { type = "bicgstab",			-- linear solver type ["bicgstab", "cg", "linear"]
+    precond =
+    { type 		= "gmg",	                          -- preconditioner ["gmg", "ilu", "ilut", "jac", "gs", "sgs"]
+      smoother 	= {type = "ilu", overlap = true},	-- gmg-smoother ["ilu", "ilut", "jac", "gs", "sgs"]
+      cycle		= "V",		                          -- gmg-cycle ["V", "F", "W"]
+      preSmooth	= 3,		                          -- number presmoothing steps
+      postSmooth 	= 3,		                        -- number postsmoothing steps
+      rap			= true,		                          -- comutes RAP-product instead of assembling if true
+      baseLevel	= ARGS.numPreRefs,                -- gmg - baselevel
+    },
+    convCheck =
+      { type		= "standard",
+        iterations	= 30,		-- number of iterations
+        absolute	= 0.5e-8,	-- absolut value of defact to be reached; usually 1e-8 - 1e-10 (must be stricter / less than in newton section)
+        reduction	= 1e-7,		-- reduction factor of defect to be reached; usually 1e-7 - 1e-8 (must be stricter / less than in newton section)
+        verbose		= true		-- print convergence rates if true
       }
   },
 
@@ -148,7 +125,7 @@ local trench2D =
 
   output =
   {
-    file = "simulations/trench2D_day/", -- needs to be a folder!
+    file = "simulations/trench2D_day/", -- must be a folder!
     data = {"c", "p", "rho", "mu", "kr", "s", "q", "ff", "tf", "af", "df", "pc", "k"},
     -- scaling factor for correct time units.
     -- 1 means all units are given in seconds

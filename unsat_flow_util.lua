@@ -173,7 +173,7 @@ function ProblemDisc:CreateElemDisc(subdom, medium)
 
     -- diffusive flux: \Phi S_w \rho_w D \nabla \omega
     local diffusion = ScaleAddLinkerMatrix()
-    diffusion:add(self.problem.flow.density.min*volufrac, medium.diffusion)
+    diffusion:add(self.problem.flow.density.min*volufrac, self.problem.flow.diffusion)
 
     -- advective flux: \rho_w \omega q
     local advectiveFlux = ScaleAddLinkerVector()
@@ -208,7 +208,7 @@ function ProblemDisc:CreateElemDisc(subdom, medium)
 
     local gradC = GridFunctionGradientData(self.u, "c")
     local difFlux = ScaleAddLinkerVector()
-    difFlux:add(self.problem.flow.density.min*medium.diffusion, gradC*volufrac)
+    difFlux:add(self.problem.flow.density.min*self.problem.flow.diffusion, gradC*volufrac)
 
     local si = self.domain:subset_handler():get_subset_index(subdom)
     self.CompositeCapillary:add(si, capillary/self.problem.output.scale^2)

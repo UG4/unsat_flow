@@ -5,7 +5,7 @@ params =
 {
 --	physical parameters
 	fs_depth = util.GetParamNumber("-fsDepth", 0.2), -- depth of the free surface at the right boundary
-	recharge = util.GetParamNumber("-recharge", 3.3e-2), -- "rain"
+	recharge = util.GetParamNumber("-recharge", 0.0000165), -- "rain"
 }
 
 -- additional constants for vanGenuchten
@@ -66,6 +66,7 @@ local henry =
     { type = "real",      -- viscosity function ["const", "real"]
       mu0 = 1.002e-3         -- [ kg m^{-3} ]
     },
+    diffusion   = 18.8571e-6   -- constant
   },
    medium =
    {
@@ -79,7 +80,6 @@ local henry =
           { type  = "vanGenuchten",
             value   = "@SiltLoam",
           },
-          diffusion   = 18.8571e-6,   -- constant
           permeability  = = "@SiltLoam" -- 1.019368e-9,  -- must be uid of a medium defined under parameter or number
       },
   },
@@ -99,51 +99,29 @@ local henry =
     -- Land
     { cmp = "c", type = "dirichlet", bnd = "Inflow", value = 0.0 },
     -- { cmp = "p", type = "flux", bnd = "Inflow", inner = "Medium", value = -3.3e-2 },
+
+    -- Top
     { cmp = "p", type = "flux", bnd = "Top", inner="Medium", value="RechargeTop"}
 
   },
 
-  solver =
-  {
-      type = "newton",
-      lineSearch = {			   		  -- ["standard", "none"]
-          type = "standard",
-          maxSteps		= 10,		    -- maximum number of line search steps
-          lambdaStart		= 1,		  -- start value for scaling parameter
-          lambdaReduce	= 0.5,		-- reduction factor for scaling parameter
-          acceptBest 		= true,		-- check for best solution if true
-          checkAll		= false		  -- check all maxSteps steps if true
-      },
-
-      convCheck = {
-          type		= "standard",
-          iterations	= 10,			-- number of iterations
-          absolute	= 1e-8,			-- absolut value of defact to be reached; usually 1e-6 - 1e-9
-          reduction	= 1e-7,		  -- reduction factor of defect to be reached; usually 1e-6 - 1e-7
-          verbose		= true			-- print convergence rates if true
-      },
-
-      linSolver =
-      {
-          type = "bicgstab",			-- linear solver type ["bicgstab", "cg", "linear"]
-          precond =
-          {
-              type 		= "gmg",	                          -- preconditioner ["gmg", "ilu", "ilut", "jac", "gs", "sgs"]
-              smoother 	= {type = "ilu", overlap = true},	-- gmg-smoother ["ilu", "ilut", "jac", "gs", "sgs"]
-              cycle		= "V",		                          -- gmg-cycle ["V", "F", "W"]
-              preSmooth	= 3,		                          -- number presmoothing steps
-              postSmooth 	= 3,		                        -- number postsmoothing steps
-              rap			= true,		                          -- comutes RAP-product instead of assembling if true
-              baseLevel	= ARGS.numPreRefs,                -- gmg - baselevel
-
-          },
-          convCheck = {
-              type		= "standard",
-              iterations	= 30,		  -- number of iterations
-              absolute	= 0.5e-11,	-- absolut value of defact to be reached; usually 1e-8 - 1e-10 (must be stricter / less than in newton section)
-              reduction	= 1e-9,		  -- reduction factor of defect to be reached; usually 1e-7 - 1e-8 (must be stricter / less than in newton section)
-              verbose		= true,		  -- print convergence rates if true
-          }
+  linSolver =
+  { type = "bicgstab",			-- linear solver type ["bicgstab", "cg", "linear"]
+    precond =
+    { type 		= "gmg",	                          -- preconditioner ["gmg", "ilu", "ilut", "jac", "gs", "sgs"]
+      smoother 	= {type = "ilu", overlap = true},	-- gmg-smoother ["ilu", "ilut", "jac", "gs", "sgs"]
+      cycle		= "V",		                          -- gmg-cycle ["V", "F", "W"]
+      preSmooth	= 3,		                          -- number presmoothing steps
+      postSmooth 	= 3,		                        -- number postsmoothing steps
+      rap			= true,		                          -- comutes RAP-product instead of assembling if true
+      baseLevel	= ARGS.numPreRefs,                -- gmg - baselevel
+    },
+    convCheck =
+      { type		= "standard",
+        iterations	= 30,		-- number of iterations
+        absolute	= 0.5e-8,	-- absolut value of defact to be reached; usually 1e-8 - 1e-10 (must be stricter / less than in newton section)
+        reduction	= 1e-7,		-- reduction factor of defect to be reached; usually 1e-7 - 1e-8 (must be stricter / less than in newton section)
+        verbose		= true		-- print convergence rates if true
       }
   },
 
@@ -154,7 +132,7 @@ local henry =
       stop	= 1000.0,			        -- [s]  end time point
       max_time_steps = 10000,		  -- [1]	maximum number of time steps
       dt		= ARGS.dt,		        -- [s]  initial time step
-      dtmin	= 0.00001 * ARGS.dt,	-- [s]  minimal time step
+      dtmin	= ARGS.dt,	-- [s]  minimal time step
       dtmax	= 10.0,	              -- [s]  maximal time step
       dtred	= 0.1,			          -- [1]  reduction factor for time step
       tol 	= 1e-2,
@@ -162,8 +140,12 @@ local henry =
 
   output =
   {
-    file = "simulations/henry2D", -- needs to be a folder!
-    data = {"c", "p", "rho", "mu", "kr", "s", "q", "f", "pc", "k"}
+    file = "simulations/henry2D", -- must be a folder!
+    data = {"c", "p", "rho", "mu", "kr", "s", "q", "ff", "tf", "af", "df", "pc", "k"},
+    -- scaling factor for correct time units.
+    -- 1 means all units are given in seconds
+    -- if units are scaled to days, then the scaling factor should be 86400
+    scale = 1
   },
 }
 
@@ -177,7 +159,7 @@ function HydroPressure_bnd(x, y, t, si)
 end
 
 function HydroPressure(x, y)
-  return -10055.25 * (y + params.fs_depth)
+  return rhog * (y + params.fs_depth)
 end
 
 function RechargeTop(x, y, t, si)

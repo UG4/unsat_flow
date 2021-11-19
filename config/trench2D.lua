@@ -56,6 +56,7 @@ local trench2D =
     { type = "real",      -- viscosity function ["const", "real"]
       mu0 = 1.002e-3      -- [ kg m^{-3} ]
     },
+    diffusion   = 18.8571e-6,   -- [m^2/s]
   },
    medium =
    {
@@ -69,7 +70,6 @@ local trench2D =
           { type  = "vanGenuchten",
             value   = "@SiltLoam",
           },
-          diffusion   = 18.8571e-6,   -- [m^2/s]
           permeability  = "@SiltLoam" -- 1.019368e-9,  -- uid of a material or number
       },
   },
@@ -88,47 +88,23 @@ local trench2D =
      {cmp = "c", type = "dirichlet", bnd = "Aquifer", value = 0},
   },
 
-  solver =
-  {
-      type = "newton",
-      lineSearch = {			   		  -- ["standard", "none"]
-          type = "standard",
-          maxSteps		= 10,		    -- maximum number of line search steps
-          lambdaStart		= 1,		  -- start value for scaling parameter
-          lambdaReduce	= 0.5,    -- reduction factor for scaling parameter
-          acceptBest 		= true,   -- check for best solution if true
-          checkAll		= false		  -- check all maxSteps steps if true
-      },
-
-      convCheck = {
-          type		= "standard",
-          iterations	= 128,    -- number of iterations
-          absolute	= 1e-8,	    -- absolut value of defact to be reached; usually 1e-6 - 1e-9
-          reduction	= 1e-7,		  -- reduction factor of defect to be reached; usually 1e-6 - 1e-7
-          verbose		= true	    -- print convergence rates if true
-      },
-
-      linSolver =
-      {
-          type = "bicgstab",			-- linear solver type ["bicgstab", "cg", "linear"]
-          precond =
-          {
-              type 		= "gmg",	                          -- preconditioner ["gmg", "ilu", "ilut", "jac", "gs", "sgs"]
-              smoother 	= {type = "ilu", overlap = true},	-- gmg-smoother ["ilu", "ilut", "jac", "gs", "sgs"]
-              cycle		= "V",		                          -- gmg-cycle ["V", "F", "W"]
-              preSmooth	= 3,		                          -- number presmoothing steps
-              postSmooth 	= 3,		                        -- number postsmoothing steps
-              rap			= true,		                          -- comutes RAP-product instead of assembling if true
-              baseLevel	= ARGS.numPreRefs,                -- gmg - baselevel
-
-          },
-          convCheck = {
-              type		= "standard",
-              iterations	= 30,		-- number of iterations
-              absolute	= 0.5e-8,	-- absolut value of defact to be reached; usually 1e-8 - 1e-10 (must be stricter / less than in newton section)
-              reduction	= 1e-7,		-- reduction factor of defect to be reached; usually 1e-7 - 1e-8 (must be stricter / less than in newton section)
-              verbose		= true,		-- print convergence rates if true
-          }
+  linSolver =
+  { type = "bicgstab",			-- linear solver type ["bicgstab", "cg", "linear"]
+    precond =
+    { type 		= "gmg",	                          -- preconditioner ["gmg", "ilu", "ilut", "jac", "gs", "sgs"]
+      smoother 	= {type = "ilu", overlap = true},	-- gmg-smoother ["ilu", "ilut", "jac", "gs", "sgs"]
+      cycle		= "V",		                          -- gmg-cycle ["V", "F", "W"]
+      preSmooth	= 3,		                          -- number presmoothing steps
+      postSmooth 	= 3,		                        -- number postsmoothing steps
+      rap			= true,		                          -- comutes RAP-product instead of assembling if true
+      baseLevel	= ARGS.numPreRefs,                -- gmg - baselevel
+    },
+    convCheck =
+      { type		= "standard",
+        iterations	= 30,		-- number of iterations
+        absolute	= 0.5e-8,	-- absolut value of defact to be reached; usually 1e-8 - 1e-10 (must be stricter / less than in newton section)
+        reduction	= 1e-7,		-- reduction factor of defect to be reached; usually 1e-7 - 1e-8 (must be stricter / less than in newton section)
+        verbose		= true		-- print convergence rates if true
       }
   },
 
@@ -147,8 +123,12 @@ local trench2D =
 
   output =
   {
-    file = "simulations/trench2D/", -- needs to be a folder!
-    data = {"c", "p", "rho", "mu", "kr", "s", "q", "f", "pc", "k"}
+    file = "simulations/trench2D/", -- ,must be a folder!
+    data = {"c", "p", "rho", "mu", "kr", "s", "q", "ff", "tf", "af", "df", "pc", "k"},
+    -- scaling factor for correct time units.
+    -- 1 means all units are given in seconds
+    -- if units are scaled to days, then the scaling factor should be 86400
+    scale = 1
   }
 
 }

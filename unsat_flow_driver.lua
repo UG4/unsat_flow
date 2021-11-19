@@ -48,9 +48,7 @@ print("Created VTK Output")
 disc:SetInitialData(disc.u)
 
 -- Solver Config
-util.solver.defaults.approxSpace	= approxSpace
-solver = util.solver.CreateSolver(problem.solver)
-print(solver:config_string())
+util.solver.defaults.approxSpace = approxSpace
 
 -- Time stepping parameters
 local startTime = problem.time.start
@@ -78,7 +76,8 @@ else
     local nstages = 2
 
     for i=1,nstages do
-        limexLSolver[i] = util.solver.CreateSolver(problem.solver.linSolver)
+        limexLSolver[i] = util.solver.CreateSolver(problem.linSolver)
+        print(limexLSolver[i]:config_string())
         --limexLSolver[i]:set_convergence_check(lsolveCheck)
 
         limexNLSolver[i] = NewtonSolver()
@@ -108,11 +107,11 @@ else
     concErrorEst:add(spaceC)
 
     limex:add_error_estimator(concErrorEst)
-    limex:set_tolerance(1e-3)
+    limex:set_tolerance(TOL)
     limex:set_stepsize_safety_factor(0.8)
-    limex:set_time_step(problem.time.dt)
-    limex:set_dt_min(problem.time.dtmin)
-    limex:set_dt_max(problem.time.dtmax)
+    limex:set_time_step(dt)
+    limex:set_dt_min(dtMin)
+    limex:set_dt_max(dtMax)
     limex:set_increase_factor(1000.0)
     --limex:enable_matrix_cache()
     limex:disable_matrix_cache()
@@ -129,27 +128,22 @@ else
     local vtkobserver = VTKOutputObserver(problem.output.file..ARGS.problemID..".vtk", disc.vtk)
     limex:attach_observer(vtkobserver)
 
-    --[[
-    if (problem.step_post_processing) then
-        local luaobserver = LuaCallbackObserver()
-
-    local stepClock = CuckooClock()
-
-    function MyLuaCallback(step, time, currdt)
-        print ("Time per step :"..stepClock:toc()) -- get time for last step
-        local usol=luaobserver:get_current_solution()
-        myProblem:step_post_processing(usol, step, time)
-        stepClock:tic() -- reset timing
+    -- post process for saving time step size
+    local luaObserver = LuaCallbackObserver()
+    function luaPostProcess(step, time, currdt)
+        print("")
+        print(">>>> TimeStep: "..step..","..time..","..currdt.." <<<<")
+        print("")
         return 0;
     end
+    luaObserver:set_callback("luaPostProcess")
+    limex:attach_observer(luaObserver)
 
-    luaobserver:set_callback("MyLuaCallback")
-    limex:attach_observer(luaobserver)
-    end
-    --]]
-
-
+    local sw = CuckooClock()
+    sw:tic()
     -- Solve problem.
     limexConvCheck:set_minimum_defect(3e-10)
     limex:apply(disc.u, endTime, disc.u, 0.0)
+
+    print ("CDELTA="..sw:toc())
 end

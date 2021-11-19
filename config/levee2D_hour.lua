@@ -58,6 +58,7 @@ local levee2D =
     { type = "real",      -- viscosity function ["const", "real"]
       mu0 = 2.783e-7     -- [ Pa h ]
     },
+    diffusion   = 0.067886         -- [m^2/h]
   },
   medium =
   {
@@ -71,7 +72,6 @@ local levee2D =
       { type  = "vanGenuchten",
         value   = "@SiltLoam"
       },
-      diffusion   = 0.067886,         -- [m^2/h]
       permeability  = "@SiltLoam",    -- uid of a medium defined under parameter or number
     },
     { subsets = {"SAND_LEFT","SAND_RIGHT"},
@@ -84,7 +84,6 @@ local levee2D =
       { type      = "vanGenuchten",
         value = "@SiltLoam"
       },
-      diffusion   = 0.067886,         -- [m^2/h]
       permeability  = "@SiltLoam",    -- uid of a medium defined under parameter or number
     },
   },
@@ -97,53 +96,29 @@ local levee2D =
 
   boundary =
   {
+    {cmp = "p", type = "dirichlet", bnd = "AirBnd", value = 0.0},
     {cmp = "p", type = "dirichlet", bnd = "WaterBnd", value = "Levee2D_RisingFlood_p"},
     {cmp = "p", type = "dirichlet", bnd = "ToeBnd", value = 0.0 },
     {cmp = "c", type = "dirichlet", bnd = "WaterBnd", value = "Levee2D_RisingFlood_c"},
-    {cmp = "c", type = "dirichlet", bnd = "ToeBnd", value = 0.0 },
   },
 
-  solver =
-  {
-    type = "newton",
-    lineSearch = {			   		  -- ["standard", "none"]
-      type = "standard",
-      maxSteps		= 10,		    -- maximum number of line search steps
-      lambdaStart		= 1,		  -- start value for scaling parameter
-      lambdaReduce	= 0.5,		-- reduction factor for scaling parameter
-      acceptBest 		= true,		-- check for best solution if true
-      checkAll		= false		  -- check all maxSteps steps if true
+  linSolver =
+  { type = "bicgstab",			-- linear solver type ["bicgstab", "cg", "linear"]
+    precond =
+    { type 		= "gmg",	                          -- preconditioner ["gmg", "ilu", "ilut", "jac", "gs", "sgs"]
+      smoother 	= {type = "ilu", overlap = true},	-- gmg-smoother ["ilu", "ilut", "jac", "gs", "sgs"]
+      cycle		= "V",		                          -- gmg-cycle ["V", "F", "W"]
+      preSmooth	= 3,		                          -- number presmoothing steps
+      postSmooth 	= 3,		                        -- number postsmoothing steps
+      rap			= true,		                          -- comutes RAP-product instead of assembling if true
+      baseLevel	= ARGS.numPreRefs,                -- gmg - baselevel
     },
-
-    convCheck = {
-      type		= "standard",
-      iterations	= 10,			-- number of iterations
-      absolute	= 1e-8,			-- absolut value of defact to be reached; usually 1e-6 - 1e-9
-      reduction	= 1e-7,		  -- reduction factor of defect to be reached; usually 1e-6 - 1e-7
-      verbose		= true			-- print convergence rates if true
-    },
-
-      linSolver =
-      {
-          type = "bicgstab",			-- linear solver type ["bicgstab", "cg", "linear"]
-          precond =
-          {
-              type 		= "gmg",	                          -- preconditioner ["gmg", "ilu", "ilut", "jac", "gs", "sgs"]
-              smoother 	= {type = "ilu", overlap = true},	-- gmg-smoother ["ilu", "ilut", "jac", "gs", "sgs"]
-              cycle		= "V",		                          -- gmg-cycle ["V", "F", "W"]
-              preSmooth	= 3,		                          -- number presmoothing steps
-              postSmooth 	= 3,		                        -- number postsmoothing steps
-              rap			= true,		                          -- comutes RAP-product instead of assembling if true
-              baseLevel	= ARGS.numPreRefs,                -- gmg - baselevel
-
-          },
-          convCheck = {
-              type		= "standard",
-              iterations	= 30,		  -- number of iterations
-              absolute	= 0.5e-11,	-- absolut value of defact to be reached; usually 1e-8 - 1e-10 (must be stricter / less than in newton section)
-              reduction	= 1e-9,		  -- reduction factor of defect to be reached; usually 1e-7 - 1e-8 (must be stricter / less than in newton section)
-              verbose		= true,		  -- print convergence rates if true
-          }
+    convCheck =
+      { type		= "standard",
+        iterations	= 30,		-- number of iterations
+        absolute	= 0.5e-8,	-- absolut value of defact to be reached; usually 1e-8 - 1e-10 (must be stricter / less than in newton section)
+        reduction	= 1e-7,		-- reduction factor of defect to be reached; usually 1e-7 - 1e-8 (must be stricter / less than in newton section)
+        verbose		= true		-- print convergence rates if true
       }
   },
 
@@ -166,19 +141,19 @@ local levee2D =
   -- k (conductivity), f (flux), rho (density)
   output =
   {
-    file = "simulations/levee2D_hour/", -- needs to be a folder!
+    file = "simulations/levee2D_hour/", -- must be a folder!
     data = {"c", "p", "rho", "mu", "kr", "s", "q", "ff", "tf", "af", "df", "pc", "k"},
     -- scaling factor for correct time units.
     -- 1 means all units are given in seconds
     -- if units are scaled to days, then the scaling factor should be 86400
-    scale = 60
+    scale = 3600
   }
 }
 
 -- rising flood
 function Levee2D_RisingFlood_p(x, y, t, si)
   local pegel = math.min(t/Levee2D_tRise, 1.0)*5.85
-  if (y < pegel) then
+  if (y <= pegel) then
     return true, (pegel - y) * rhog
   end
   return false, 0.0
@@ -186,7 +161,7 @@ end
 
 function Levee2D_RisingFlood_c(x, y, t, si)
   local pegel = math.min(t/Levee2D_tRise, 1.0)*5.85
-  if (y < pegel) then
+  if (y <= pegel) then
     return true, 1.0
   end
   return false, 0.0
