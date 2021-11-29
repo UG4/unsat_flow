@@ -12,7 +12,7 @@ local trench2D =
   domain =
   {
     dim = 2,
-    grid = "grids/trench2D_scaled.ugx",
+    grid = "grids/trench2D.ugx",
     numRefs = ARGS.numRefs,
     numPreRefs = ARGS.numPreRefs,
   },
@@ -149,11 +149,11 @@ function Trench2DDrainagePressureBoundary(x, y, t)
 end
 
 function Trench2DAquiferBoundary(x, y, t)
-  return true, (10.0 - y) * rhog
+  return true, (1.0 - y) * rhog
 end
 
 function Trench2DPressureStart(x, y, t)
-  return (10.0 - y) * rhog
+  return (1.0 - y) * rhog
 end
 
 return trench2D
