@@ -1,17 +1,26 @@
--- additional constants for vanGenuchten
-levee2D_rho = 998.23
-levee2D_g = -1.271e8 -- must be negative!
-rhog = (-1.0)*levee2D_rho*levee2D_g
-tstop = 100 * 24 -- 100 days
-Levee2D_tRise = 24
+-- config for modelling the henry problem
 
-local levee2D =
+-- command line parameters
+params =
+{
+--	physical parameters
+	fs_depth = util.GetParamNumber("-fsDepth", 0.0), -- depth of the free surface at the right boundary
+	recharge = util.GetParamNumber("-recharge", 0.0000165), -- "rain"
+}
+
+-- additional constants for vanGenuchten
+henry2D_rho = 998.23 -- kg/m^3
+henry2D_g = -1.271e8 --[m/h^2] must be negative!
+rhog = (-1.0)*henry2D_rho*henry2D_g
+tstop = 100 * 24 -- 100 days
+
+local henry =
 {
   -- The domain specific setup
   domain =
   {
     dim = 2,
-    grid = "grids/levee2D.ugx",
+    grid = "grids/henry_quad.ugx",
     numRefs = ARGS.numRefs,
     numPreRefs = ARGS.numPreRefs,
   },
@@ -22,85 +31,80 @@ local levee2D =
       type = "vanGenuchten",
       thetaS = 0.153, thetaR = 0.250,
       alpha = 0.79/rhog, n = 10.4,
-      Ksat = 0.045},
+      Ksat = 1.08},
 
     { uid = "@TouchetSiltLoam",
       type = "vanGenuchten",
       thetaS = 0.190, thetaR = 0.469,
       alpha = 0.50/rhog, n = 7.09,
-      Ksat = 0.1262},
+      Ksat = 3.03},
 
     { uid = "@SiltLoam",
       type = "vanGenuchten",
       thetaS = 0.396, thetaR = 0.131,
       alpha = 0.423/rhog, n = 2.06,
-      Ksat = 0.002067},
+      Ksat = 0.0496},
 
-    { uid = "@Clay",
+    { uid = "@SiltLoam",
       type = "vanGenuchten",
       thetaS = 0.446, thetaR = 0.0,
       alpha = 0.152/rhog, n = 1.17,
-      Ksat = 3.417e-5}
+      Ksat = 8.2e-4}
     },
 
   flow =
   {
-    boussinesq = false,
+    boussinesq = true,
 
-    gravity = levee2D_g,      -- [ m s^{-2}], must be negative!
+    gravity = henry2D_g,      -- [ m s^{-2}], must be negative!
     density =
     { type = "ideal",     -- density function ["linear", "exp", "ideal"]
-      min = levee2D_rho,  -- [ kg m^{-3} ] water density
+      min = henry2D_rho,         -- [ kg m^{-3} ] water density
       max = 1025.0,       -- [ kg m^{-3} ] saltwater density
     },
 
     viscosity =
     { type = "real",      -- viscosity function ["const", "real"]
-      mu0 = 2.783e-7     -- [ Pa h ]
+      mu0 = 1.002e-3         -- [ kg m^{-3} ]
     },
-    diffusion   = 0.067886         -- [m^2/h]
+    diffusion   = 0.067886 -- [m^2/h]
   },
-  medium =
-  {
-    { subsets = {"CLAY"},
-      porosity = "@Clay",
-      saturation =
-      { type = "vanGenuchten",
-        value = "@Clay"
+   medium =
+   {
+      {   subsets = {"Medium"},
+          porosity = "@SiltLoam", -- uid of a medium defined under parameter or number
+          saturation =
+          { type = "vanGenuchten",
+            value = "@SiltLoam",
+          },
+          conductivity =
+          { type  = "vanGenuchten",
+            value   = "@SiltLoam",
+          },
+          permeability  = "@SiltLoam" -- 1.019368e-9,  -- must be uid of a medium defined under parameter or number
       },
-      conductivity =
-      { type  = "vanGenuchten",
-        value   = "@Clay"
-      },
-      permeability  = "@Clay",    -- uid of a medium defined under parameter or number
-    },
-    { subsets = {"SAND_LEFT","SAND_RIGHT"},
-      porosity = "@SiltLoam",
-      saturation    =
-      { type = "vanGenuchten",
-        value = "@SiltLoam"
-      },
-      conductivity  =
-      { type      = "vanGenuchten",
-        value = "@SiltLoam"
-      },
-      permeability  = "@SiltLoam",    -- uid of a medium defined under parameter or number
-    },
   },
 
   initial =
   {
+    { cmp = "p", value = "HydroPressure" },
     { cmp = "c", value = 0.0 },
-    { cmp = "p", value = "Levee2D_HydrostaticHead" },
   },
 
   boundary =
   {
-    {cmp = "p", type = "dirichlet", bnd = "AirBnd", value = 0.0},
-    {cmp = "p", type = "dirichlet", bnd = "WaterBnd", value = "Levee2D_RisingFlood_p"},
-    {cmp = "p", type = "dirichlet", bnd = "ToeBnd", value = 0.0 },
-    {cmp = "c", type = "dirichlet", bnd = "ToeBnd", value = 0.0 },
-    {cmp = "c", type = "dirichlet", bnd = "WaterBnd", value = "Levee2D_RisingFlood_c"},
+    -- Sea
+    { cmp = "c", type = "dirichlet", bnd = "Sea", value = 1.0 },
+    { cmp = "p", type = "dirichlet", bnd = "Sea", value = "HydroPressure" },
+
+    -- Land
+    { cmp = "c", type = "dirichlet", bnd = "Inflow", value = 0.0 },
+    { cmp = "p", type = "flux", bnd = "Inflow", inner = "Medium", value = -6.6e-5*1.296e7},
+
+    -- Top
+    --{ cmp = "p", type = "flux", bnd = "Top", inner="Medium", value=params.recharge*1.296e7},
+    --{ cmp = "c", type = "dirichlet", bnd = "Top", value = 0.0 },
+
   },
 
   linSolver =
@@ -129,48 +133,41 @@ local levee2D =
       start 	= 0.0,				      -- [s]  start time point
       stop	= tstop,			        -- [s]  end time point
       max_time_steps = 10000,		  -- [1]	maximum number of time steps
-      dt		= tstop/100,		      -- [s]  initial time step
+      dt		= 0.000001,		              -- [s]  initial time step
       dtmin	= ARGS.dt,	          -- [s]  minimal time step
-      dtmax	= tstop/10,	          -- [s]  maximal time step
-      dtred	= 0.5,			          -- [1]  reduction factor for time step
+      dtmax	= 24.0,	              -- [s]  maximal time step
+      dtred	= 0.1,			          -- [1]  reduction factor for time step
       tol 	= 1e-2,
   },
 
-  -- config for vtk output
-  -- possible data output variables:
-  -- c (concentration), p (pressure), q (Darcy Velocity), s (saturation),
-  -- k (conductivity), f (flux), rho (density)
   output =
   {
-    file = "simulations/levee2D_hour/", -- must be a folder!
+    file = "simulations/henry_hour/", -- must be a folder!
     data = {"c", "p", "rho", "mu", "kr", "s", "q", "ff", "tf", "af", "df", "pc", "k"},
     -- scaling factor for correct time units.
     -- 1 means all units are given in seconds
     -- if units are scaled to days, then the scaling factor should be 86400
     scale = 3600
-  }
+  },
 }
 
--- rising flood
-function Levee2D_RisingFlood_p(x, y, t, si)
-  local pegel = math.min(t/Levee2D_tRise, 1.0)*5.85
-  if (y <= pegel) then
-    return true, (pegel - y) * rhog
+function HydroPressure_bnd(x, y, t, si)
+  pp = HydroPressure(x, y)
+  if pp < 0 then
+    return false, 0
+  else
+    return true, pp
   end
-  return false, 0.0
 end
 
-function Levee2D_RisingFlood_c(x, y, t, si)
-  local pegel = math.min(t/Levee2D_tRise, 1.0)*5.85
-  if (y <= pegel) then
-    return true, 1.0
-  end
-  return false, 0.0
+function HydroPressure(x, y)
+  --print(henry2D_g * henry2D_rho * (y + params.fs_depth))
+  return henry2D_g * henry2D_rho * (y + params.fs_depth)
 end
 
--- initial pressure function
-function Levee2D_HydrostaticHead(x, y, t, si)
-  return (6-y)*rhog
+function RechargeTop(x, y, t, si)
+  return -(2.0-x)*recharge
 end
 
-return levee2D
+
+return henry

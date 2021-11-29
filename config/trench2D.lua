@@ -3,6 +3,8 @@
 Trench2D_rho = 998.23
 Trench2D_g = -9.81 -- must be negative!
 rhog = (-1.0)*Trench2D_rho*Trench2D_g
+numdays = 500
+tstop = numdays * 86400
 
 local trench2D =
 {
@@ -84,7 +86,7 @@ local trench2D =
   {
      {cmp = "p", type = "dirichlet", bnd = "Trench", value = "Trench2DDrainagePressureBoundary"},
      {cmp = "p", type = "dirichlet", bnd = "Aquifer", value = "Trench2DAquiferBoundary" },
-     {cmp = "c", type = "dirichlet", bnd = "Trench", value = 1},
+     {cmp = "c", type = "dirichlet", bnd = "Trench", value = 1.0},
      {cmp = "c", type = "dirichlet", bnd = "Aquifer", value = 0},
   },
 
@@ -112,18 +114,18 @@ local trench2D =
   {
     control = "limex",
     start   = 0.0,          -- [s] start time point
-    stop  = 20000.0,         -- [s] end time point
-    dt  = 1,             -- [s] initial time step
-    max_time_steps = 20000, -- [1]	maximum number of time steps
+    stop  = tstop,         -- [s] end time point
+    dt  = 200,             -- [s] initial time step
+    max_time_steps = 2000, -- [1]	maximum number of time steps
     dtmin	= ARGS.dt,	-- [s]  minimal time step
-    dtmax	= 10.0,	          -- [s]  maximal time step
+    dtmax	= 86400,	          -- [s]  maximal time step
     dtred = 0.1,            -- [1] reduction factor for time step
     tol   = 1e-2
   },
 
   output =
   {
-    file = "simulations/trench2D/", -- ,must be a folder!
+    file = "./", -- ,must be a folder!
     data = {"c", "p", "rho", "mu", "kr", "s", "q", "ff", "tf", "af", "df", "pc", "k"},
     -- scaling factor for correct time units.
     -- 1 means all units are given in seconds
@@ -136,9 +138,9 @@ local trench2D =
 
 function Trench2DDrainagePressureBoundaryTime(x, y, t, tD)
   if (t <= tD) then
-    return true, (2.2*t / tD - 2.0) * (-1.0) * rhog
+    return true, (2.2*t / tD - 2.0) * rhog
   else
-    return true, 0.2  * (-1.0) * rhog
+    return true, 0.2 * rhog
   end
 end
 

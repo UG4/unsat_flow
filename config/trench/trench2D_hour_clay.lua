@@ -3,7 +3,8 @@
 Trench2D_rho = 998.23
 Trench2D_g = -1.271e8 --[m/h^2] must be negative!
 rhog = (-1.0)*Trench2D_rho*Trench2D_g
-tstop = 50 * 24 -- 50 days
+numdays = 300
+tstop = numdays * 24 -- 300 days
 
 local trench2D =
 {
@@ -32,7 +33,7 @@ local trench2D =
     { uid = "@SiltLoam",
       type = "vanGenuchten",
       thetaS = 0.396, thetaR = 0.131,
-      alpha = 0.423*2/rhog, n = 2.06,
+      alpha = 0.423/rhog, n = 2.06,
       Ksat = 0.002067},
 
     { uid = "@Clay",
@@ -44,11 +45,11 @@ local trench2D =
 
   flow =
   {
-    boussinesq = true,
+    boussinesq = false,
 
     gravity = Trench2D_g, -- [m s^{-2}]
     density =
-    { type = "linear",     -- density function ["linear", "exp", "ideal"]
+    { type = "ideal",     -- density function ["linear", "exp", "ideal"]
       min = Trench2D_rho, -- [ kg m^{-3} ] water density
       max = 1025.0,       -- [ kg m^{-3} ] saltwater density
     },
@@ -62,16 +63,16 @@ local trench2D =
   medium =
   {
     { subsets = {"Inner"},
-      porosity = "@SiltLoam", -- uid of a material or number
+      porosity = "@Clay", -- uid of a material or number
       saturation =
       { type = "vanGenuchten",
-        value = "@SiltLoam",
+        value = "@Clay",
       },
       conductivity =
       { type  = "vanGenuchten",
-        value   = "@SiltLoam",
+        value   = "@Clay",
       },
-      permeability  = "@SiltLoam" -- 1.019368e-9,  -- uid of a material or number
+      permeability  = "@Clay" -- 1.019368e-9,  -- uid of a material or number
     },
   },
 
@@ -114,7 +115,7 @@ local trench2D =
     control = "limex",
     start   = 0.0,            -- [s] start time point
     stop  = tstop,            -- [s] end time point
-    dt  = tstop/50,           -- [s] initial time step
+    dt  = tstop/numdays,           -- [s] initial time step
     max_time_steps = 1000,    -- [1]	maximum number of time steps
     dtmin	= ARGS.dt,	        -- [s]  minimal time step
     dtmax	= tstop/10,	        -- [s]  maximal time step
@@ -124,7 +125,7 @@ local trench2D =
 
   output =
   {
-    file = "simulations/trench2D_hour/", -- must be a folder!
+    file = "simulations/trench2D_hour_clay/", -- must be a folder!
     data = {"c", "p", "rho", "mu", "kr", "s", "q", "ff", "tf", "af", "df", "pc", "k"},
     -- scaling factor for correct time units.
     -- 1 means all units are given in seconds

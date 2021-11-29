@@ -3,7 +3,8 @@
 Trench2D_rho = 998.23
 Trench2D_g = -1.271e8 --[m/h^2] must be negative!
 rhog = (-1.0)*Trench2D_rho*Trench2D_g
-tstop = 50 * 24 -- 50 days
+numdays = 500
+tstop = numdays * 24 -- 60 days
 
 local trench2D =
 {
@@ -11,7 +12,7 @@ local trench2D =
   domain =
   {
     dim = 2,
-    grid = "grids/trench2D.ugx",
+    grid = "grids/trench2D_scaled.ugx",
     numRefs = ARGS.numRefs,
     numPreRefs = ARGS.numPreRefs,
   },
@@ -32,7 +33,7 @@ local trench2D =
     { uid = "@SiltLoam",
       type = "vanGenuchten",
       thetaS = 0.396, thetaR = 0.131,
-      alpha = 0.423*2/rhog, n = 2.06,
+      alpha = 0.423/rhog, n = 2.06,
       Ksat = 0.002067},
 
     { uid = "@Clay",
@@ -48,7 +49,7 @@ local trench2D =
 
     gravity = Trench2D_g, -- [m s^{-2}]
     density =
-    { type = "linear",     -- density function ["linear", "exp", "ideal"]
+    { type = "ideal",     -- density function ["linear", "exp", "ideal"]
       min = Trench2D_rho, -- [ kg m^{-3} ] water density
       max = 1025.0,       -- [ kg m^{-3} ] saltwater density
     },
@@ -114,17 +115,17 @@ local trench2D =
     control = "limex",
     start   = 0.0,            -- [s] start time point
     stop  = tstop,            -- [s] end time point
-    dt  = tstop/50,           -- [s] initial time step
+    dt  = 1,           -- [s] initial time step
     max_time_steps = 1000,    -- [1]	maximum number of time steps
     dtmin	= ARGS.dt,	        -- [s]  minimal time step
-    dtmax	= tstop/10,	        -- [s]  maximal time step
+    dtmax	= 24,	        -- [s]  maximal time step
     dtred = 0.5,              -- [1] reduction factor for time step
     tol   = 1e-2
   },
 
   output =
   {
-    file = "simulations/trench2D_hour/", -- must be a folder!
+    file = "./", -- must be a folder!
     data = {"c", "p", "rho", "mu", "kr", "s", "q", "ff", "tf", "af", "df", "pc", "k"},
     -- scaling factor for correct time units.
     -- 1 means all units are given in seconds
@@ -148,11 +149,11 @@ function Trench2DDrainagePressureBoundary(x, y, t)
 end
 
 function Trench2DAquiferBoundary(x, y, t)
-  return true, (1.0 - y) * rhog
+  return true, (10.0 - y) * rhog
 end
 
 function Trench2DPressureStart(x, y, t)
-  return (1.0 - y) * rhog
+  return (10.0 - y) * rhog
 end
 
 return trench2D

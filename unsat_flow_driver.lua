@@ -2,7 +2,7 @@
 -- Author: Niklas Conen
 
 local myPath = ug_get_current_path()
-package.path = package.path..";".. myPath.."/config/?.lua;".. myPath.."/?.lua"
+package.path = package.path..";".. myPath.."/config/?.lua;".. myPath.."/?.lua;"..myPath.."/config/trench/?.lua;"
 
 ug_load_script("../scripts/ug_util.lua")
 ug_load_script("/unsat_flow_util.lua")
@@ -119,8 +119,10 @@ else
   -- Debugging LIMEX.
     local dbgWriter = GridFunctionDebugWriter(approxSpace)
     if (false) then
-        limex:set_debug(dbgWriter)
-        limex:set_debug_for_timestepper(dbgWriter)
+        --limex:set_debug(dbgWriter)
+        --limex:set_debug_for_timestepper(dbgWriter)
+        dbgWriter:set_vtk_output(true)
+		dbgWriter:set_conn_viewer_output(true) 
         limexNLSolver[1]:set_debug(dbgWriter)
     end
 

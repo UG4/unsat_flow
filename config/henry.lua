@@ -12,6 +12,8 @@ params =
 henry2D_rho = 998.23
 henry2D_g = -9.81 -- must be negative!
 rhog = (-1.0)*henry2D_rho*henry2D_g
+tstop = 100 * 86400 -- 100 days
+
 
 local henry =
 {
@@ -80,28 +82,29 @@ local henry =
           { type  = "vanGenuchten",
             value   = "@SiltLoam",
           },
-          permeability  = = "@SiltLoam" -- 1.019368e-9,  -- must be uid of a medium defined under parameter or number
+          permeability  = "@SiltLoam" -- 1.019368e-9,  -- must be uid of a medium defined under parameter or number
       },
   },
 
   initial =
   {
     { cmp = "c", value = 0.0 },
-    { cmp = "p", value = "HydroPressure" },
+    { cmp = "p", value = 0.0 },
   },
 
   boundary =
   {
     -- Sea
-    { cmp = "c", type = "dirichlet", bnd = "Sea", value = 1.0 },
-    { cmp = "p", type = "dirichlet", bnd = "Sea", value = "HydroPressure_bnd" },
+    --{ cmp = "c", type = "dirichlet", bnd = "Sea", value = 1.0 },
+    --{ cmp = "p", type = "dirichlet", bnd = "Sea", value = "HydroPressure_bnd" },
 
     -- Land
-    { cmp = "c", type = "dirichlet", bnd = "Inflow", value = 0.0 },
-    -- { cmp = "p", type = "flux", bnd = "Inflow", inner = "Medium", value = -3.3e-2 },
+    --{ cmp = "c", type = "dirichlet", bnd = "Inflow", value = 0.0 },
+    --{ cmp = "p", type = "flux", bnd = "Inflow", inner = "Medium", value = -6.6e-5 },
 
     -- Top
-    { cmp = "p", type = "flux", bnd = "Top", inner="Medium", value="RechargeTop"}
+    { cmp = "p", type = "flux", bnd = "Top", inner="Medium", value=params.recharge},
+    { cmp = "c", type = "dirichlet", bnd = "Top", value = 0.0 },
 
   },
 
@@ -129,18 +132,18 @@ local henry =
   {
       control	= "limex",
       start 	= 0.0,				      -- [s]  start time point
-      stop	= 1000.0,			        -- [s]  end time point
+      stop	= tstop,			        -- [s]  end time point
       max_time_steps = 10000,		  -- [1]	maximum number of time steps
-      dt		= ARGS.dt,		        -- [s]  initial time step
+      dt		= 1,		        -- [s]  initial time step
       dtmin	= ARGS.dt,	-- [s]  minimal time step
-      dtmax	= 10.0,	              -- [s]  maximal time step
+      dtmax	= 3600,	              -- [s]  maximal time step
       dtred	= 0.1,			          -- [1]  reduction factor for time step
       tol 	= 1e-2,
   },
 
   output =
   {
-    file = "simulations/henry2D", -- must be a folder!
+    file = "simulations/henry/", -- must be a folder!
     data = {"c", "p", "rho", "mu", "kr", "s", "q", "ff", "tf", "af", "df", "pc", "k"},
     -- scaling factor for correct time units.
     -- 1 means all units are given in seconds
@@ -159,7 +162,7 @@ function HydroPressure_bnd(x, y, t, si)
 end
 
 function HydroPressure(x, y)
-  return rhog * (y + params.fs_depth)
+  return henry2D_g * henry2D_rho * (y + params.fs_depth)
 end
 
 function RechargeTop(x, y, t, si)
