@@ -48,8 +48,6 @@ end
 
 -- Element discretisation
 function ProblemDisc:CreateElemDisc(subdom, medium)
-
-    local myUpwind = FullUpwind()
     -- Creates the elememt discretisation for a given medium
 	local elemDisc = {}
     -- flow equation
@@ -64,7 +62,9 @@ function ProblemDisc:CreateElemDisc(subdom, medium)
     self.mu = viscosity
 
     local density = self:density()
-    density:set_input(0, elemDisc["transport"]:value())
+    if self.problem.flow.density.type ~= "const" then
+        density:set_input(0, elemDisc["transport"]:value())
+    end
     self.rho = density
 
     local porosity = nil    -- phi
@@ -79,33 +79,22 @@ function ProblemDisc:CreateElemDisc(subdom, medium)
     end
 
     -- the vanGenuchten model is calculated using the Richards Plugin
-    local relative_conductivity = ProblemDisc:conductivity(medium.conductivity.value) -- k(S)
+    local conductivity = ProblemDisc:conductivity(medium.conductivity.value) -- k(S)
     local saturation = ProblemDisc:saturation(medium.saturation.value) -- S
 
     -- hydraulic conductivity in saturated medium is given by darcys law
     -- k_f = K*rho*g / mu
     -- for unsaturated flow:
     -- multiplied by relative hydraulic conductivity K(S)
-    -- k_f = k_f,r(S) * K * rho * g / mu
-    local sat_permeability = nil
-    -- if K is given by the van Genuchten modell, the permeability needs to be
-    -- calculated by dividing K_sat by density times gravity and multipling with
-    -- the dynamic viscosity
-    if type(medium.permeability) == "string" then
-        Ksat = nil
-        for i, param in ipairs(self.problem.parameter) do
-            if param.uid == medium.permeability then
-                Ksat = param.Ksat
-            end
-        end
-
-        sat_permeability = (self.problem.flow.viscosity.mu0*Ksat) / ((-1.0)*self.problem.flow.density.min*self.problem.flow.gravity)
-    else
-        sat_permeability = medium.permeability
-    end
-
+    -- k_f,r(S) * k_f =  * K * rho * g / mu
     local permeability = ScaleAddLinkerMatrix()
-    permeability:add(relative_conductivity, sat_permeability)
+    permeability:add(conductivity, self.problem.flow.viscosity.mu0/((-1.0)*self.problem.flow.density.min*self.problem.flow.gravity))
+
+    print(viscosity)
+    print(density)
+    print(porosity)
+    print(conductivity)
+    print(saturation)
 
     -- Darcy Velocity
     -- $\vec q := -k*k(p)/mu (\grad p - \rho \vec g)$
@@ -140,7 +129,7 @@ function ProblemDisc:CreateElemDisc(subdom, medium)
         -- boussinesq flux \rho_w0 \vec{v}_w
         local fluidFluxB = ScaleAddLinkerVector()
 
-        storageB:add(porosity*self.problem.flow.density.min, saturation)
+        storageB:add(self.problem.flow.density.min, volufrac)
         fluidFluxB:add(self.problem.flow.density.min, DarcyVelocity)
 
         elemDisc["flow"]:set_mass(storageB)
@@ -152,9 +141,6 @@ function ProblemDisc:CreateElemDisc(subdom, medium)
 
     end
 
-	elemDisc["flow"]:set_mass_scale(0.0)
-    elemDisc["flow"]:set_diffusion(0.0)
-
 	-----------------------------------------
 	-- Equation [2]
 	-----------------------------------------
@@ -165,28 +151,24 @@ function ProblemDisc:CreateElemDisc(subdom, medium)
 
     -- diffusive flux: \Phi S_w \rho_w D \nabla \omega
     local diffusion = ScaleAddLinkerMatrix()
-    diffusion:add(self.problem.flow.density.min*volufrac, self.problem.flow.diffusion)
+    diffusion:add(volufrac*self.problem.flow.density.min, self.problem.flow.diffusion)
 
-    -- advective flux: \rho_w \omega q
-    local advectiveFlux = ScaleAddLinkerVector()
-    advectiveFlux:add(density, DarcyVelocity)
-
-    elemDisc["transport"]:set_mass(0.0)
+    -- advective flux is equal to fluidFlux * mass fraction
     elemDisc["transport"]:set_mass_scale(storage)
-    elemDisc["transport"]:set_velocity(advectiveFlux)
+    elemDisc["transport"]:set_velocity(fluidFlux)
     elemDisc["transport"]:set_diffusion(diffusion)
-    elemDisc["transport"]:set_upwind(myUpwind)
+    elemDisc["transport"]:set_upwind(FullUpwind())
 
     -- capillary pressure: air pressure is set to 0
     -- => p_c = - p_w
     local capillary = -1.0*elemDisc["flow"]:value()
-    print(capillary)
+
     --local capillary = ScaleAddLinkerNumber()
     --capillary:add(-1.0*elemDisc["flow"]:value(), 1/self.problem.output.scale^2)
 
     -- setting capillary pressure as inputs for the van Genuchten model
     if medium.conductivity.type == "vanGenuchten" then
-        relative_conductivity:set_capillary(capillary)
+        conductivity:set_capillary(capillary)
     end
 
     if medium.saturation.type == "vanGenuchten" then
@@ -199,7 +181,8 @@ function ProblemDisc:CreateElemDisc(subdom, medium)
     -- they may have to be converted back to seconds using the scaling factor
     -- given at problem.output.scale
     local advFlux = ScaleAddLinkerVector()
-    advFlux:add(elemDisc["transport"]:value(), advectiveFlux)
+    c_value = GridFunctionNumberData(self.u, "c")
+    advFlux:add(c_value, fluidFlux)
 
     local gradC = GridFunctionGradientData(self.u, "c")
     local difFlux = ScaleAddLinkerVector()
@@ -207,10 +190,10 @@ function ProblemDisc:CreateElemDisc(subdom, medium)
 
     local si = self.domain:subset_handler():get_subset_index(subdom)
     self.CompositeCapillary:add(si, capillary/self.problem.output.scale^2)
-    self.CompositeConductivity:add(si, relative_conductivity)
+    self.CompositeConductivity:add(si, conductivity)
     self.CompositeSaturation:add(si, saturation)
     self.CompositeDarcyVelocity:add(si, DarcyVelocity*self.problem.output.scale)
-    self.CompositeFluidFlux:add(si, fluidFlux)
+    self.CompositeFluidFlux:add(si, fluidFlux*self.problem.output.scale)
     self.CompositeTransportFlux:add(si, (advFlux - difFlux)*self.problem.output.scale)
     self.CompositeAdvectiveFlux:add(si, advFlux*self.problem.output.scale)
     self.CompositeDiffusiveFlux:add(si, difFlux*self.problem.output.scale)
@@ -261,7 +244,7 @@ function ProblemDisc:CreateDomainDisc(approxSpace)
 
         if v.type == "flux" then
             -- Neumann-type
-            neumannBnd[v.cmp] =  neumannBnd[v.cmp] or NeumannBoundary(v.cmp, "fv1")
+            neumannBnd[v.cmp] = neumannBnd[v.cmp] or NeumannBoundary(v.cmp, "fv1")
             neumannBnd[v.cmp]:add(v.value, v.bnd, v.inner)
             print("Added Neumann Boundary with value " .. v.value .. " for " .. v.cmp .. " on subset " .. v.bnd)
         end
@@ -294,7 +277,7 @@ function ProblemDisc:CreateVTKOutput()
         elseif v == "gradc" then
             self.vtk:select_element(GridFunctionGradientData(self.u, "c"), v)
         -- density
-        elseif v == "rho" then
+        elseif v == "rho" and self.problem.flow.density.type ~= "const" then
             self.vtk:select_element(self.rho, v)
         -- viscosity
         elseif v == "mu" and self.problem.flow.viscosity.type ~= "const" then
@@ -395,6 +378,9 @@ function ProblemDisc:density(densDesc)
 
         density = LuaUserFunctionNumber("DensityFct", 1);
         density:set_deriv(0, "dwDensityFct");
+    
+    elseif self.problem.flow.density.type == "const" then
+        density = self.problem.flow.density.min
     end
 
     return density
@@ -425,13 +411,11 @@ end
 
 function ProblemDisc:viscosity()
     local viscosity = nil
-    local mu0 = nil
+    local mu0 = self.problem.flow.viscosity.mu0
     if self.problem.flow.viscosity.type == "const" then
-        viscosity = self.problem.flow.viscosity.mu0
+        viscosity = mu0
 
     elseif self.problem.flow.viscosity.type == "real" then
-        mu0 = self.problem.flow.viscosity.mu0
-
         function ViscosityFct(w)
             return mu0*(1 + 1.85*w - 4.1*w^2 + 44.5 * w^3)
         end

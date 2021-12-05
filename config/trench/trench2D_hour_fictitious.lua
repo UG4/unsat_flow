@@ -20,38 +20,33 @@ local trench2D =
   parameter = {
     { uid = "@Sandstone",
       type = "vanGenuchten",
-      thetaS = 0.153, thetaR = 0.250,
+      thetaS = 0.250, thetaR = 0.153,
       alpha = 0.79/rhog, n = 10.4,
-      Ksat = 0.045
-    },
+      Ksat = 0.045},
 
     { uid = "@TouchetSiltLoam",
       type = "vanGenuchten",
-      thetaS = 0.190, thetaR = 0.469,
+      thetaS = 0.469, thetaR = 0.190,
       alpha = 0.50/rhog, n = 7.09,
-      Ksat = 0.1262
-    },
+      Ksat = 0.1262},
 
     { uid = "@SiltLoam",
       type = "vanGenuchten",
       thetaS = 0.396, thetaR = 0.131,
       alpha = 0.423/rhog, n = 2.06,
-      Ksat = 0.002067
-    },
+      Ksat = 0.002067},
 
     { uid = "@Clay",
       type = "vanGenuchten",
       thetaS = 0.446, thetaR = 0.0,
       alpha = 0.152/rhog, n = 1.17,
-      Ksat = 3.417e-5
-    },
+      Ksat = 3.417e-5},
 
     { uid = "@fictitious",
       type = "vanGenuchten",
       thetaS = 0.9, thetaR = 0,
       alpha = 2.5/rhog, n = 4,
-      Ksat = 0.006
-    }
+      Ksat = 0.1}
   },
 
   flow =
@@ -83,7 +78,6 @@ local trench2D =
       { type  = "vanGenuchten",
         value   = "@fictitious",
       },
-      permeability  = "@fictitious" -- 1.019368e-9,  -- uid of a material or number
     },
   },
 
@@ -95,8 +89,8 @@ local trench2D =
 
   boundary =
   {
-     {cmp = "p", type = "flux", inner="Inner", bnd = "Trench", value = "Trench2DDrainageFluxBoundary"},
-     --{cmp = "p", type = "dirichlet", bnd = "Trench", value = "Trench2DDrainagePressureBoundary"},
+     --{cmp = "p", type = "flux", inner="Inner", bnd = "Trench", value = "Trench2DDrainageFluxBoundary"},
+     {cmp = "p", type = "dirichlet", bnd = "Trench", value = "Trench2DDrainagePressureBoundary"},
      {cmp = "p", type = "dirichlet", bnd = "Aquifer", value = "Trench2DAquiferBoundary" },
      {cmp = "c", type = "dirichlet", bnd = "Trench", value = 1.0},
      {cmp = "c", type = "dirichlet", bnd = "Aquifer", value = 0},
@@ -127,13 +121,14 @@ local trench2D =
     control = "limex",
     start   = 0.0,            -- [s] start time point
     stop  = tstop,            -- [s] end time point
-    dt  = 1,           -- [s] initial time step
-    max_time_steps = 2000,    -- [1]	maximum number of time steps
+    max_time_steps = 1000,    -- [1]	maximum number of time steps
+    dt  = 1,                  -- [s] initial time step
     dtmin	= ARGS.dt,	        -- [s]  minimal time step
-    dtmax	= 24,	        -- [s]  maximal time step
+    dtmax	= 24,	              -- [s]  maximal time step
     dtred = 0.5,              -- [1] reduction factor for time step
     tol   = 1e-2
   },
+
 
   output =
   {
@@ -150,7 +145,7 @@ local trench2D =
 
 function Trench2DDrainagePressureBoundaryTime(x, y, t, tD)
   if (t <= tD) then
-    return true, (5.0 - 5.0*t / tD) * rhog
+    return true, (2.0 - 1.0*t / tD) * rhog
   else
     return true, 1 * rhog
   end
@@ -162,9 +157,9 @@ end
 
 function Trench2DDrainageFluxBoundaryTime(x, y, t, tD)
   if (t <= tD) then
-    return true, -0.6
+    return true, -6e-2
   else
-    return true, -0.2
+    return true, -3e-2
   end
 end
 

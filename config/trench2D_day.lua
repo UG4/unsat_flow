@@ -3,7 +3,7 @@
 Trench2D_rho = 998.23
 Trench2D_g = -7.323e10 -- must be negative!
 rhog = (-1.0)*Trench2D_rho*Trench2D_g
-tstop = 50
+tstop = 100 -- 100 days
 
 local trench2D =
 {
@@ -19,13 +19,13 @@ local trench2D =
   parameter = {
     { uid = "@Sandstone",
       type = "vanGenuchten",
-      thetaS = 0.153, thetaR = 0.250,
+      thetaS = 0.250, thetaR = 0.153,
       alpha = 0.79/rhog, n = 10.4,
       Ksat = 1.08},
 
     { uid = "@TouchetSiltLoam",
       type = "vanGenuchten",
-      thetaS = 0.190, thetaR = 0.469,
+      thetaS = 0.469, thetaR = 0.190,
       alpha = 0.50/rhog, n = 7.09,
       Ksat = 3.03},
 
@@ -40,13 +40,13 @@ local trench2D =
       thetaS = 0.446, thetaR = 0.0,
       alpha = 0.152/rhog, n = 1.17,
       Ksat = 8.2e-4}
-    },
+  },
 
   flow =
   {
     boussinesq = false,
 
-    gravity = Trench2D_g, -- [m s^{-2}]
+    gravity = Trench2D_g, -- [m day^{-2}]
     density =
     { type = "ideal",     -- density function ["linear", "exp", "ideal"]
       min = Trench2D_rho, -- [ kg m^{-3} ] water density
@@ -55,7 +55,7 @@ local trench2D =
 
     viscosity =
     { type = "real",      -- viscosity function ["const", "real"]
-      mu0 = 1.16e-8       -- [ Pa s ]
+      mu0 = 1.16e-8       -- [ Pa d ]
     },
     diffusion   = 1.63    -- [m^2/day]
   },
@@ -71,8 +71,6 @@ local trench2D =
       { type  = "vanGenuchten",
         value   = "@SiltLoam",
       },
-      diffusion   = 1.63, -- [m^2/day]
-      permeability  = "@SiltLoam" -- 1.019368e-9,  -- uid of a material or number
     },
   },
 
@@ -115,10 +113,10 @@ local trench2D =
     control = "limex",
     start   = 0.0,            -- [s] start time point
     stop  = tstop,            -- [s] end time point
-    dt  = tstop/50,           -- [s] initial time step
     max_time_steps = 1000,    -- [1]	maximum number of time steps
+    dt  = 0.5,                -- [s] initial time step
     dtmin	= ARGS.dt,	        -- [s]  minimal time step
-    dtmax	= tstop/10,	        -- [s]  maximal time step
+    dtmax	= 1.0,	            -- [s]  maximal time step
     dtred = 0.5,              -- [1] reduction factor for time step
     tol   = 1e-2
   },

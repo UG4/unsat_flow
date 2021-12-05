@@ -1,18 +1,27 @@
--- config for modelling a drainage trench with constant groundwater flow
+-- config for modelling the henry problem
 
-Trench2D_rho = 998.23
-Trench2D_g = -9.81 -- must be negative!
-rhog = (-1.0)*Trench2D_rho*Trench2D_g
-numdays = 500
-tstop = numdays * 86400 -- 500 days
+-- command line parameters
+params =
+{
+--	physical parameters
+	fs_depth = util.GetParamNumber("-fsDepth", 0.0), -- depth of the free surface at the right boundary
+	recharge = util.GetParamNumber("-recharge", 0.0000165), -- "rain"
+}
 
-local trench2D =
+-- additional constants for vanGenuchten
+henry2D_rho = 998.23
+henry2D_g = -9.81 -- must be negative!
+rhog = (-1.0)*henry2D_rho*henry2D_g
+tstop = 100 * 86400 -- 100 days
+
+
+local henry =
 {
   -- The domain specific setup
   domain =
   {
     dim = 2,
-    grid = "grids/trench2D.ugx",
+    grid = "grids/henry_quad.ugx",
     numRefs = ARGS.numRefs,
     numPreRefs = ARGS.numPreRefs,
   },
@@ -46,48 +55,56 @@ local trench2D =
 
   flow =
   {
-    boussinesq = false,
+    boussinesq = true,
 
-    gravity = Trench2D_g,       -- [m s^{-2}]
+    gravity = henry2D_g,      -- [ m s^{-2}], must be negative!
     density =
-    { type = "ideal",           -- density function ["linear", "exp", "ideal"]
-      min = Trench2D_rho,       -- [ kg m^{-3} ] water density
-      max = 1025.0,             -- [ kg m^{-3} ] saltwater density
+    { type = "ideal",         -- density function ["linear", "exp", "ideal"]
+      min = henry2D_rho,      -- [ kg m^{-3} ] water density
+      max = 1025.0,           -- [ kg m^{-3} ] saltwater density
     },
 
     viscosity =
-    { type = "real",            -- viscosity function ["const", "real"]
-      mu0 = 1.002e-3            -- [ kg m^{-3} ]
+    { type = "real",          -- viscosity function ["const", "real"]
+      mu0 = 1.002e-3          -- [ Pa s ]
     },
-    diffusion   = 18.8571e-6,   -- [m^2/s]
+    diffusion   = 18.8571e-6  -- [ m^2/s ]
   },
    medium =
    {
-      {   subsets = {"Inner"},
-          porosity = "@TouchetSiltLoam", -- uid of a material or number
+      {   subsets = {"Medium"},
+          porosity = "@SiltLoam", -- uid of a medium defined under parameter or number
           saturation =
           { type = "vanGenuchten",
-            value = "@TouchetSiltLoam",
+            value = "@SiltLoam",
           },
           conductivity =
           { type  = "vanGenuchten",
-            value   = "@TouchetSiltLoam",
+            value   = "@SiltLoam",
           },
       },
   },
 
-  initial=
-   {
-       { cmp = "p", value = "Trench2DPressureStart"},
-       { cmp = "c", value = 0}
-   },
+  initial =
+  {
+    { cmp = "c", value = 0.0 },
+    { cmp = "p", value = "HydroPressure" },
+  },
 
   boundary =
   {
-     {cmp = "p", type = "dirichlet", bnd = "Trench", value = "Trench2DDrainagePressureBoundary"},
-     {cmp = "p", type = "dirichlet", bnd = "Aquifer", value = "Trench2DAquiferBoundary" },
-     {cmp = "c", type = "dirichlet", bnd = "Trench", value = 1},
-     {cmp = "c", type = "dirichlet", bnd = "Aquifer", value = 0},
+    -- Sea
+    { cmp = "c", type = "dirichlet", bnd = "Sea", value = 1.0 },
+    { cmp = "p", type = "dirichlet", bnd = "Sea", value = "HydroPressure_bnd" },
+
+    -- Land
+    { cmp = "c", type = "dirichlet", bnd = "Inflow", value = 0.0 },
+    { cmp = "p", type = "flux", bnd = "Inflow", inner = "Medium", value = -6.6e-5 }
+
+    -- Top
+    --{ cmp = "p", type = "flux", bnd = "Top", inner="Medium", value=params.recharge},
+    --{ cmp = "c", type = "dirichlet", bnd = "Top", value = 0.0 },
+
   },
 
   linSolver =
@@ -125,35 +142,31 @@ local trench2D =
 
   output =
   {
-    file = "simulations/trench2D_seconds_touchetsiltloam/", -- must be a folder!
+    file = "./", -- must be a folder!
     data = {"c", "p", "rho", "mu", "kr", "s", "q", "ff", "tf", "af", "df", "pc", "k"},
     -- scaling factor for correct time units.
     -- 1 means all units are given in seconds
     -- if units are scaled to days, then the scaling factor should be 86400
     scale = 1
-  }
-
+  },
 }
 
-
-function Trench2DDrainagePressureBoundaryTime(x, y, t, tD)
-  if (t <= tD) then
-    return true, (2.2*t / tD - 2.0) * rhog
+function HydroPressure_bnd(x, y, t, si)
+  pp = HydroPressure(x, y)
+  if pp < 0 then
+    return false, 0
   else
-    return true, 0.2 * rhog
+    return true, pp
   end
 end
 
-function Trench2DDrainagePressureBoundary(x, y, t)
-  return Trench2DDrainagePressureBoundaryTime(x, y, t, 86400)
+function HydroPressure(x, y)
+  return henry2D_g * henry2D_rho * (y + params.fs_depth)
 end
 
-function Trench2DAquiferBoundary(x, y, t)
-  return true, (1.0 - y) * rhog
+function RechargeTop(x, y, t, si)
+  return -(2.0-x)*params.recharge
 end
 
-function Trench2DPressureStart(x, y, t)
-  return (1.0 - y) * rhog
-end
 
-return trench2D
+return henry

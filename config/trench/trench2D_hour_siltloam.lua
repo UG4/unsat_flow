@@ -20,13 +20,13 @@ local trench2D =
   parameter = {
     { uid = "@Sandstone",
       type = "vanGenuchten",
-      thetaS = 0.153, thetaR = 0.250,
+      thetaS = 0.250, thetaR = 0.153,
       alpha = 0.79/rhog, n = 10.4,
       Ksat = 0.045},
 
     { uid = "@TouchetSiltLoam",
       type = "vanGenuchten",
-      thetaS = 0.190, thetaR = 0.469,
+      thetaS = 0.469, thetaR = 0.190,
       alpha = 0.50/rhog, n = 7.09,
       Ksat = 0.1262},
 
@@ -45,20 +45,20 @@ local trench2D =
 
   flow =
   {
-    boussinesq = true,
+    boussinesq = false,
 
     gravity = Trench2D_g, -- [m s^{-2}]
     density =
-    { type = "ideal",     -- density function ["linear", "exp", "ideal"]
+    { type = "const",     -- density function ["linear", "exp", "ideal", "const"]
       min = Trench2D_rho, -- [ kg m^{-3} ] water density
       max = 1025.0,       -- [ kg m^{-3} ] saltwater density
     },
 
     viscosity =
-    { type = "real",      -- viscosity function ["const", "real"]
+    { type = "const",      -- viscosity function ["const", "real"]
       mu0 = 2.783e-7      -- [ Pa h ]
     },
-    diffusion   = 0.067886 -- [m^2/h]
+    diffusion   = 0.0679 -- [m^2/h]
   },
   medium =
   {
@@ -71,8 +71,7 @@ local trench2D =
       conductivity =
       { type  = "vanGenuchten",
         value   = "@SiltLoam",
-      },
-      permeability  = "@SiltLoam" -- 1.019368e-9,  -- uid of a material or number
+      }
     },
   },
 
@@ -115,10 +114,10 @@ local trench2D =
     control = "limex",
     start   = 0.0,            -- [s] start time point
     stop  = tstop,            -- [s] end time point
-    dt  = 1,           -- [s] initial time step
     max_time_steps = 1000,    -- [1]	maximum number of time steps
+    dt  = 1,                  -- [s] initial time step
     dtmin	= ARGS.dt,	        -- [s]  minimal time step
-    dtmax	= 24,	        -- [s]  maximal time step
+    dtmax	= 24,	              -- [s]  maximal time step
     dtred = 0.5,              -- [1] reduction factor for time step
     tol   = 1e-2
   },
@@ -126,7 +125,7 @@ local trench2D =
   output =
   {
     file = "./", -- must be a folder!
-    data = {"c", "p", "rho", "mu", "kr", "s", "q", "ff", "tf", "af", "df", "pc", "k"},
+    data = {"c", "p", "gradp", "gradc", "rho", "mu", "kr", "s", "q", "ff", "tf", "af", "df", "pc", "k"},
     -- scaling factor for correct time units.
     -- 1 means all units are given in seconds
     -- if units are scaled to days, then the scaling factor should be 86400
@@ -145,7 +144,7 @@ function Trench2DDrainagePressureBoundaryTime(x, y, t, tD)
 end
 
 function Trench2DDrainagePressureBoundary(x, y, t)
-  return Trench2DDrainagePressureBoundaryTime(x, y, t, 24)
+  return Trench2DDrainagePressureBoundaryTime(x, y, t, 500)
 end
 
 function Trench2DAquiferBoundary(x, y, t)

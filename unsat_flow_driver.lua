@@ -22,7 +22,8 @@ ARGS =
 }
 
 local problem = require(ARGS.problemID)
-InitUG(problem.domain.dim, AlgebraType("CPU", 2))
+
+InitUG(problem.domain.dim, AlgebraType("CPU", 1))
 
 local dom = util.CreateAndDistributeDomain(problem.domain.grid, ARGS.numRefs, ARGS.numPreRefs,  {})
 
@@ -112,9 +113,9 @@ else
     limex:set_time_step(dt)
     limex:set_dt_min(dtMin)
     limex:set_dt_max(dtMax)
-    limex:set_increase_factor(1000.0)
-    --limex:enable_matrix_cache()
-    limex:disable_matrix_cache()
+    limex:set_increase_factor(2.0)
+    limex:enable_matrix_cache()
+    --limex:disable_matrix_cache()
 
   -- Debugging LIMEX.
     local dbgWriter = GridFunctionDebugWriter(approxSpace)

@@ -29,45 +29,45 @@ local henry =
   parameter = {
     { uid = "@Sandstone",
       type = "vanGenuchten",
-      thetaS = 0.153, thetaR = 0.250,
+      thetaS = 0.250, thetaR = 0.153,
       alpha = 0.79/rhog, n = 10.4,
-      Ksat = 1.08},
+      Ksat = 0.045},
 
     { uid = "@TouchetSiltLoam",
       type = "vanGenuchten",
-      thetaS = 0.190, thetaR = 0.469,
+      thetaS = 0.469, thetaR = 0.190,
       alpha = 0.50/rhog, n = 7.09,
-      Ksat = 3.03},
+      Ksat = 0.1262},
 
     { uid = "@SiltLoam",
       type = "vanGenuchten",
       thetaS = 0.396, thetaR = 0.131,
       alpha = 0.423/rhog, n = 2.06,
-      Ksat = 0.0496},
+      Ksat = 0.002067},
 
-    { uid = "@SiltLoam",
+    { uid = "@Clay",
       type = "vanGenuchten",
       thetaS = 0.446, thetaR = 0.0,
       alpha = 0.152/rhog, n = 1.17,
-      Ksat = 8.2e-4}
-    },
+      Ksat = 3.417e-5}
+  },
 
   flow =
   {
     boussinesq = true,
 
-    gravity = henry2D_g,      -- [ m s^{-2}], must be negative!
+    gravity = henry2D_g,    -- [ m s^{-2}], must be negative!
     density =
-    { type = "ideal",     -- density function ["linear", "exp", "ideal"]
-      min = henry2D_rho,         -- [ kg m^{-3} ] water density
-      max = 1025.0,       -- [ kg m^{-3} ] saltwater density
+    { type = "ideal",       -- density function ["linear", "exp", "ideal"]
+      min = henry2D_rho,    -- [ kg m^{-3} ] water density
+      max = 1025.0,         -- [ kg m^{-3} ] saltwater density
     },
 
     viscosity =
-    { type = "real",      -- viscosity function ["const", "real"]
-      mu0 = 1.002e-3         -- [ kg m^{-3} ]
+    { type = "real",        -- viscosity function ["const", "real"]
+      mu0 = 2.783e-7        -- [ Pa h ]
     },
-    diffusion   = 0.067886 -- [m^2/h]
+    diffusion   = 0.067886  -- [m^2/h]
   },
    medium =
    {
@@ -80,8 +80,7 @@ local henry =
           conductivity =
           { type  = "vanGenuchten",
             value   = "@SiltLoam",
-          },
-          permeability  = "@SiltLoam" -- 1.019368e-9,  -- must be uid of a medium defined under parameter or number
+          }
       },
   },
 
@@ -99,7 +98,7 @@ local henry =
 
     -- Land
     { cmp = "c", type = "dirichlet", bnd = "Inflow", value = 0.0 },
-    { cmp = "p", type = "flux", bnd = "Inflow", inner = "Medium", value = -6.6e-5*1.296e7},
+    { cmp = "p", type = "flux", bnd = "Inflow", inner = "Medium", value = -6.6e-5},
 
     -- Top
     --{ cmp = "p", type = "flux", bnd = "Top", inner="Medium", value=params.recharge*1.296e7},
@@ -132,17 +131,17 @@ local henry =
       control	= "limex",
       start 	= 0.0,				      -- [s]  start time point
       stop	= tstop,			        -- [s]  end time point
-      max_time_steps = 10000,		  -- [1]	maximum number of time steps
-      dt		= 0.000001,		              -- [s]  initial time step
+      max_time_steps = 1000,		  -- [1]	maximum number of time steps
+      dt		= 1,		              -- [s]  initial time step
       dtmin	= ARGS.dt,	          -- [s]  minimal time step
-      dtmax	= 24.0,	              -- [s]  maximal time step
-      dtred	= 0.1,			          -- [1]  reduction factor for time step
+      dtmax	= 24,	                -- [s]  maximal time step
+      dtred	= 0.5,			          -- [1]  reduction factor for time step
       tol 	= 1e-2,
   },
 
   output =
   {
-    file = "simulations/henry_hour/", -- must be a folder!
+    file = "./", -- must be a folder!
     data = {"c", "p", "rho", "mu", "kr", "s", "q", "ff", "tf", "af", "df", "pc", "k"},
     -- scaling factor for correct time units.
     -- 1 means all units are given in seconds
@@ -168,6 +167,5 @@ end
 function RechargeTop(x, y, t, si)
   return -(2.0-x)*recharge
 end
-
 
 return henry

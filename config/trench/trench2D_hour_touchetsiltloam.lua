@@ -20,13 +20,13 @@ local trench2D =
   parameter = {
     { uid = "@Sandstone",
       type = "vanGenuchten",
-      thetaS = 0.153, thetaR = 0.250,
+      thetaS = 0.250, thetaR = 0.153,
       alpha = 0.79/rhog, n = 10.4,
       Ksat = 0.045},
 
     { uid = "@TouchetSiltLoam",
       type = "vanGenuchten",
-      thetaS = 0.190, thetaR = 0.469,
+      thetaS = 0.469, thetaR = 0.190,
       alpha = 0.50/rhog, n = 7.09,
       Ksat = 0.1262},
 
@@ -72,7 +72,6 @@ local trench2D =
       { type  = "vanGenuchten",
         value   = "@TouchetSiltLoam",
       },
-      permeability  = "@TouchetSiltLoam" -- 1.019368e-9,  -- uid of a material or number
     },
   },
 
@@ -115,10 +114,10 @@ local trench2D =
     control = "limex",
     start   = 0.0,            -- [s] start time point
     stop  = tstop,            -- [s] end time point
-    dt  = 1,           -- [s] initial time step
     max_time_steps = 1000,    -- [1]	maximum number of time steps
+    dt  = 1,                  -- [s] initial time step
     dtmin	= ARGS.dt,	        -- [s]  minimal time step
-    dtmax	= tstop/10,	        -- [s]  maximal time step
+    dtmax	= 24,	              -- [s]  maximal time step
     dtred = 0.5,              -- [1] reduction factor for time step
     tol   = 1e-2
   },

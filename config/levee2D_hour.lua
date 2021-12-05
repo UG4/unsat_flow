@@ -20,13 +20,13 @@ local levee2D =
   parameter = {
     { uid = "@Sandstone",
       type = "vanGenuchten",
-      thetaS = 0.153, thetaR = 0.250,
+      thetaS = 0.250, thetaR = 0.153,
       alpha = 0.79/rhog, n = 10.4,
       Ksat = 0.045},
 
     { uid = "@TouchetSiltLoam",
       type = "vanGenuchten",
-      thetaS = 0.190, thetaR = 0.469,
+      thetaS = 0.469, thetaR = 0.190,
       alpha = 0.50/rhog, n = 7.09,
       Ksat = 0.1262},
 
@@ -47,18 +47,18 @@ local levee2D =
   {
     boussinesq = false,
 
-    gravity = levee2D_g,      -- [ m s^{-2}], must be negative!
+    gravity = levee2D_g,    -- [ m s^{-2}], must be negative!
     density =
-    { type = "ideal",     -- density function ["linear", "exp", "ideal"]
-      min = levee2D_rho,  -- [ kg m^{-3} ] water density
-      max = 1025.0,       -- [ kg m^{-3} ] saltwater density
+    { type = "ideal",       -- density function ["linear", "exp", "ideal"]
+      min = levee2D_rho,    -- [ kg m^{-3} ] water density
+      max = 1025.0,         -- [ kg m^{-3} ] saltwater density
     },
 
     viscosity =
-    { type = "real",      -- viscosity function ["const", "real"]
-      mu0 = 2.783e-7     -- [ Pa h ]
+    { type = "real",        -- viscosity function ["const", "real"]
+      mu0 = 2.783e-7        -- [ Pa h ]
     },
-    diffusion   = 0.067886         -- [m^2/h]
+    diffusion   = 0.067886  -- [ m^2/h ]
   },
   medium =
   {
@@ -72,7 +72,6 @@ local levee2D =
       { type  = "vanGenuchten",
         value   = "@Clay"
       },
-      permeability  = "@Clay",    -- uid of a medium defined under parameter or number
     },
     { subsets = {"SAND_LEFT","SAND_RIGHT"},
       porosity = "@SiltLoam",
@@ -84,7 +83,6 @@ local levee2D =
       { type      = "vanGenuchten",
         value = "@SiltLoam"
       },
-      permeability  = "@SiltLoam",    -- uid of a medium defined under parameter or number
     },
   },
 
@@ -125,15 +123,15 @@ local levee2D =
 
   time =
   {
-      control	= "limex",
-      start 	= 0.0,				      -- [s]  start time point
-      stop	= tstop,			        -- [s]  end time point
-      max_time_steps = 10000,		  -- [1]	maximum number of time steps
-      dt		= tstop/100,		      -- [s]  initial time step
-      dtmin	= ARGS.dt,	          -- [s]  minimal time step
-      dtmax	= tstop/10,	          -- [s]  maximal time step
-      dtred	= 0.5,			          -- [1]  reduction factor for time step
-      tol 	= 1e-2,
+    control	= "limex",
+    start 	= 0.0,				      -- [s]  start time point
+    stop	= tstop,			        -- [s]  end time point
+    max_time_steps = 1000,		  -- [1]	maximum number of time steps
+    dt		= 1,		              -- [s]  initial time step
+    dtmin	= ARGS.dt,	          -- [s]  minimal time step
+    dtmax	= 24,	                -- [s]  maximal time step
+    dtred	= 0.5,			          -- [1]  reduction factor for time step
+    tol 	= 1e-2,
   },
 
   -- config for vtk output
@@ -142,7 +140,7 @@ local levee2D =
   -- k (conductivity), f (flux), rho (density)
   output =
   {
-    file = "simulations/levee2D_hour/", -- must be a folder!
+    file = "./", -- must be a folder!
     data = {"c", "p", "rho", "mu", "kr", "s", "q", "ff", "tf", "af", "df", "pc", "k"},
     -- scaling factor for correct time units.
     -- 1 means all units are given in seconds

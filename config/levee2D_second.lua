@@ -2,6 +2,8 @@
 levee2D_rho = 998.23
 levee2D_g = -9.81 -- must be negative!
 rhog = (-1.0)*levee2D_rho*levee2D_g
+tstop = 100 * 86400 -- 100 days
+Levee2D_tRise = 86400
 
 local levee2D =
 {
@@ -18,34 +20,27 @@ local levee2D =
   parameter = {
     { uid = "@Sandstone",
       type = "vanGenuchten",
-      thetaS = 0.153, thetaR = 0.250,
+      thetaS = 0.250, thetaR = 0.153,
       alpha = 0.79/rhog, n = 10.4,
-      Ksat = 1.08},
+      Ksat = 1.25e-5},
 
     { uid = "@TouchetSiltLoam",
       type = "vanGenuchten",
-      thetaS = 0.190, thetaR = 0.469,
+      thetaS = 0.469, thetaR = 0.190,
       alpha = 0.50/rhog, n = 7.09,
-      Ksat = 3.03},
+      Ksat = 3.507e-5},
 
     { uid = "@SiltLoam",
       type = "vanGenuchten",
       thetaS = 0.396, thetaR = 0.131,
       alpha = 0.423/rhog, n = 2.06,
-      Ksat = 0.0496},
+      Ksat = 5.741e-7},
 
     { uid = "@Clay",
       type = "vanGenuchten",
       thetaS = 0.446, thetaR = 0.0,
       alpha = 0.152/rhog, n = 1.17,
-      Ksat = 8.2e-4}
-    },
-
-  },
-
-  var ={
-    CharacteristicTime = 1.0,
-    RiseTime = 1.0,
+      Ksat = 9.491e-9}
   },
 
   flow =
@@ -61,9 +56,9 @@ local levee2D =
 
     viscosity =
     { type = "real",          -- viscosity function ["const", "real"]
-      mu0 = 1.002e-3          -- [ kg m^{-3} ]
+      mu0 = 1.002e-3          -- [ Pa s ]
     },
-    diffusion   = 18.8571e-6  -- constant
+    diffusion   = 18.8571e-6  -- [ m^2/s ]
   },
    medium =
    {
@@ -77,7 +72,6 @@ local levee2D =
           { type  = "vanGenuchten",
             value   = "@SiltLoam"
           },
-          permeability  = "@SiltLoam",    -- uid of a medium defined under parameter or number
       },
       {   subsets = {"SAND_LEFT","SAND_RIGHT"},
           porosity = "@SiltLoam",
@@ -89,24 +83,23 @@ local levee2D =
           { type      = "vanGenuchten",
             value = "@SiltLoam"
           },
-          permeability  = "@SiltLoam",    -- uid of a medium defined under parameter or number
       },
   },
 
    initial =
    {
       { cmp = "c", value = 0.0 },
-      { cmp = "p", value = "Levee2D_HydrostaticHead_p" },
+      { cmp = "p", value = "Levee2D_HydrostaticHead" },
    },
 
   boundary =
-  {
-     {cmp = "p", type = "dirichlet", bnd = "RightBnd", value = 0},
-     {cmp = "p", type = "dirichlet", bnd = "WaterBnd", value = "Levee2D_RisingFlood_p"},
-     {cmp = "p", type = "dirichlet", bnd = "ToeBnd", value = 0.0 },
-     {cmp = "c", type = "dirichlet", bnd = "WaterBnd", value = 1.0},
-     {cmp = "c", type = "dirichlet", bnd = "ToeBnd", value = 0.0 },
-  },
+   {
+      {cmp = "p", type = "dirichlet", bnd = "AirBnd", value = 0.0},
+      {cmp = "p", type = "dirichlet", bnd = "WaterBnd", value = "Levee2D_RisingFlood_p"},
+      {cmp = "p", type = "dirichlet", bnd = "ToeBnd", value = 0.0 },
+      {cmp = "c", type = "dirichlet", bnd = "ToeBnd", value = 0.0 },
+      {cmp = "c", type = "dirichlet", bnd = "WaterBnd", value = "Levee2D_RisingFlood_c"},
+   },
 
   linSolver =
   { type = "bicgstab",			                      -- linear solver type ["bicgstab", "cg", "linear"]
@@ -130,22 +123,22 @@ local levee2D =
 
   time =
   {
-      control	= "limex",
-      start 	= 0.0,				      -- [s]  start time point
-      stop	= 1000.0,			        -- [s]  end time point
-      max_time_steps = 10000,		  -- [1]	maximum number of time steps
-      dt		= tstop/50,		        -- [s]  initial time step
-      dtmin	= ARGS.dt,	          -- [s]  minimal time step
-      dtmax	= 10.0,	              -- [s]  maximal time step
-      dtred	= 0.1,			          -- [1]  reduction factor for time step
-      tol 	= 1e-2,
+    control	= "limex",
+    start 	= 0.0,				      -- [s]  start time point
+    stop	= tstop,			        -- [s]  end time point
+    max_time_steps = 1000,		  -- [1]	maximum number of time steps
+    dt		= 43200,		          -- [s]  initial time step
+    dtmin	= ARGS.dt,	          -- [s]  minimal time step
+    dtmax	= 86400,	            -- [s]  maximal time step
+    dtred	= 0.5,			          -- [1]  reduction factor for time step
+    tol 	= 1e-2,
   },
 
 
   -- config for vtk output
   output =
   {
-    file = "simulations/levee2D", -- must be a folder!
+    file = "./", -- must be a folder!
     data = {"c", "p", "rho", "mu", "kr", "s", "q", "ff", "tf", "af", "df", "pc", "k"},
     -- scaling factor for correct time units.
     -- 1 means all units are given in seconds
@@ -154,32 +147,26 @@ local levee2D =
   },
 }
 
-Levee2D_tRise = levee2D.var.RiseTime
-
--- Anstieg bis auf 5.85 m
-function Levee2D_Pegel(t)
-  return math.min(t/Levee2D_tRise, 1.0)*5.85
-end
-
--- This is a rising flood.
-function Levee2D_RisingFlood(x, z, t, si)
-  local zPegel = Levee2D_Pegel(t)
-  if (z <zPegel) then return true, math.max((zPegel-z), 0.0) end
+-- rising flood
+function Levee2D_RisingFlood_p(x, y, t, si)
+  local pegel = math.min(t/Levee2D_tRise, 1.0)*5.85
+  if (y <= pegel) then
+    return true, (pegel - y) * rhog
+  end
   return false, 0.0
 end
 
-function Levee2D_RisingFlood_p(x, z, t, si)
-  local t, h = Levee2D_RisingFlood(x, z, t, si)
-  return t, h * 1200 * 9.81
+function Levee2D_RisingFlood_c(x, y, t, si)
+  local pegel = math.min(t/Levee2D_tRise, 1.0)*5.85
+  if (y <= pegel) then
+    return true, 1.0
+  end
+  return false, 0.0
 end
 
--- This is an empty levee.
-function Levee2D_HydrostaticHead(x, z, t, si)
-  return -z
-end
-
-function Levee2D_HydrostaticHead_p(x, z, t, si)
-  return -z * 1200 * 9.81
+-- initial pressure function
+function Levee2D_HydrostaticHead(x, y, t, si)
+  return (6-y)*rhog
 end
 
 
