@@ -32,25 +32,25 @@ local henry =
       type = "vanGenuchten",
       thetaS = 0.250, thetaR = 0.153,
       alpha = 0.79/rhog, n = 10.4,
-      Ksat = 1.25e-5},
+      Ksat = 1.08},
 
     { uid = "@TouchetSiltLoam",
       type = "vanGenuchten",
       thetaS = 0.469, thetaR = 0.190,
       alpha = 0.50/rhog, n = 7.09,
-      Ksat = 3.507e-5},
+      Ksat = 3.03},
 
     { uid = "@SiltLoam",
       type = "vanGenuchten",
       thetaS = 0.396, thetaR = 0.131,
       alpha = 0.423/rhog, n = 2.06,
-      Ksat = 5.741e-7},
+      Ksat = 0.0496},
 
     { uid = "@Clay",
       type = "vanGenuchten",
       thetaS = 0.446, thetaR = 0.0,
       alpha = 0.152/rhog, n = 1.17,
-      Ksat = 9.491e-9}
+      Ksat = 8.2e-4}
   },
 
   flow =
@@ -133,7 +133,7 @@ local henry =
     start 	= 0.0,				      -- [s]  start time point
     stop	= tstop,			        -- [s]  end time point
     max_time_steps = 1000,		  -- [1]	maximum number of time steps
-    dt		= 43200,		          -- [s]  initial time step
+    dt		= 10000,		          -- [s]  initial time step
     dtmin	= ARGS.dt,	          -- [s]  minimal time step
     dtmax	= 86400,	            -- [s]  maximal time step
     dtred	= 0.5,			          -- [1]  reduction factor for time step

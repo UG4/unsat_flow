@@ -22,31 +22,31 @@ local trench2D =
       type = "vanGenuchten",
       thetaS = 0.250, thetaR = 0.153,
       alpha = 0.79/rhog, n = 10.4,
-      Ksat = 0.045},
-
+      Ksat = 1.08},
+  
     { uid = "@TouchetSiltLoam",
       type = "vanGenuchten",
       thetaS = 0.469, thetaR = 0.190,
       alpha = 0.50/rhog, n = 7.09,
-      Ksat = 0.1262},
-
+      Ksat = 3.03},
+  
     { uid = "@SiltLoam",
       type = "vanGenuchten",
       thetaS = 0.396, thetaR = 0.131,
       alpha = 0.423/rhog, n = 2.06,
-      Ksat = 0.002067},
-
+      Ksat = 0.0496},
+  
     { uid = "@Clay",
       type = "vanGenuchten",
       thetaS = 0.446, thetaR = 0.0,
       alpha = 0.152/rhog, n = 1.17,
-      Ksat = 3.417e-5},
+      Ksat = 8.2e-4},
 
     { uid = "@fictitious",
       type = "vanGenuchten",
       thetaS = 0.9, thetaR = 0,
       alpha = 2.5/rhog, n = 4,
-      Ksat = 0.1}
+      Ksat = 1}
   },
 
   flow =

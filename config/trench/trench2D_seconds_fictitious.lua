@@ -46,7 +46,7 @@ local trench2D =
       type = "vanGenuchten",
       thetaS = 0.9, thetaR = 0,
       alpha = 2.5/rhog, n = 2.5,
-      Ksat = 10e-8}
+      Ksat = 1}
   },
 
   flow =
@@ -62,7 +62,7 @@ local trench2D =
 
     viscosity =
     { type = "real",          -- viscosity function ["const", "real"]
-      mu0 = 2.783e-7          -- [ Pa s ]
+      mu0 = 1.002e-3          -- [ Pa s ]
     },
     diffusion   = 18.8571e-6  -- [ m^2/s ]
   },
@@ -122,7 +122,7 @@ local trench2D =
     start 	= 0.0,				      -- [s]  start time point
     stop	= tstop,			        -- [s]  end time point
     max_time_steps = 1000,		  -- [1]	maximum number of time steps
-    dt		= 43200,		          -- [s]  initial time step
+    dt		= 20000,		          -- [s]  initial time step
     dtmin	= ARGS.dt,	          -- [s]  minimal time step
     dtmax	= 86400,	            -- [s]  maximal time step
     dtred	= 0.5,			          -- [1]  reduction factor for time step

@@ -86,15 +86,15 @@ function ProblemDisc:CreateElemDisc(subdom, medium)
     -- k_f = K*rho*g / mu
     -- for unsaturated flow:
     -- multiplied by relative hydraulic conductivity K(S)
-    -- k_f,r(S) * k_f =  * K * rho * g / mu
+    -- k_f,r(S) * k_f =  K * rho * g / mu
+    Ksat = nil
+    for i, param in ipairs(self.problem.parameter) do
+        if param.uid == medium.conductivity.value then
+            Ksat = param.Ksat
+        end
+    end
     local permeability = ScaleAddLinkerMatrix()
-    permeability:add(conductivity, self.problem.flow.viscosity.mu0/((-1.0)*self.problem.flow.density.min*self.problem.flow.gravity))
-
-    print(viscosity)
-    print(density)
-    print(porosity)
-    print(conductivity)
-    print(saturation)
+    permeability:add(conductivity, self.problem.flow.viscosity.mu0/((-86400.0)*self.problem.flow.density.min*self.problem.flow.gravity))
 
     -- Darcy Velocity
     -- $\vec q := -k*k(p)/mu (\grad p - \rho \vec g)$
