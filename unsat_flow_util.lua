@@ -93,12 +93,17 @@ function ProblemDisc:CreateElemDisc(subdom, medium)
             Ksat = param.Ksat
         end
     end
+    
+    local r_scale = -86400 -- scaling for time unit in K_sat
     local permeability = ScaleAddLinkerMatrix()
-    permeability:add(conductivity, self.problem.flow.viscosity.mu0/((-86400.0)*self.problem.flow.density.min*self.problem.flow.gravity))
+    -- needs scaling depending on hydraulic conductivities scale in the Richardsplugin
+    permeability:add(conductivity, self.problem.flow.viscosity.mu0/(r_scale*self.problem.flow.density.min*self.problem.flow.gravity))
+    --permeability:add(conductivity, 1.0)
 
     -- Darcy Velocity
     -- $\vec q := -k*k(p)/mu (\grad p - \rho \vec g)$
     local DarcyVelocity = DarcyVelocityLinker()
+    --DarcyVelocity:set_viscosity(self.problem.flow.density.min*self.problem.flow.gravity*r_scale)
     DarcyVelocity:set_viscosity(viscosity)
     DarcyVelocity:set_permeability(permeability)
     DarcyVelocity:set_pressure_gradient(elemDisc["flow"]:gradient())

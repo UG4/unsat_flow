@@ -12,7 +12,7 @@ params =
 henry2D_rho = 998.23
 henry2D_g = -9.81 -- must be negative!
 rhog = (-1.0)*henry2D_rho*henry2D_g
-tstop = 100 * 86400 -- 100 days
+tstop = 1000 * 86400 -- 100 days
 
 
 local henry =
@@ -50,7 +50,19 @@ local henry =
       type = "vanGenuchten",
       thetaS = 0.446, thetaR = 0.0,
       alpha = 0.152/rhog, n = 1.17,
-      Ksat = 8.2e-4}
+      Ksat = 8.2e-4},
+    
+    { uid = "@Sand",
+      type = "vanGenuchten",
+      thetaS = 0.37, thetaR = 0.043,
+      alpha = 0.087/rhog, n = 1.58,
+      Ksat = 0.5},
+
+    { uid = "@fictitious",
+      type = "vanGenuchten",
+      thetaS = 0.9, thetaR = 0,
+      alpha = 2.5/rhog, n = 2.5,
+      Ksat = 1}
   },
 
   flow =
@@ -65,22 +77,22 @@ local henry =
     },
 
     viscosity =
-    { type = "real",          -- viscosity function ["const", "real"]
-      mu0 = 1.002e-3          -- [ Pa s ]
+    { type = "const",          -- viscosity function ["const", "real"]
+      mu0 = 1.002e-3                   -- [ Pa s ]
     },
     diffusion   = 18.8571e-6  -- [ m^2/s ]
   },
    medium =
    {
       {   subsets = {"Medium"},
-          porosity = "@SiltLoam", -- uid of a medium defined under parameter or number
+          porosity = "@Sand", -- uid of a medium defined under parameter or number
           saturation =
           { type = "vanGenuchten",
-            value = "@SiltLoam",
+            value = "@Sand",
           },
           conductivity =
           { type  = "vanGenuchten",
-            value   = "@SiltLoam",
+            value   = "@Sand",
           },
       },
   },
@@ -118,13 +130,24 @@ local henry =
       rap			= true,		                          -- comutes RAP-product instead of assembling if true
       baseLevel	= ARGS.numPreRefs,                -- gmg - baselevel
     },
-    convCheck =
+    --[[convCheck =
       { type		= "standard",
         iterations	= 30,		-- number of iterations
         absolute	= 0.5e-8,	-- absolut value of defact to be reached; usually 1e-8 - 1e-10 (must be stricter / less than in newton section)
         reduction	= 1e-7,		-- reduction factor of defect to be reached; usually 1e-7 - 1e-8 (must be stricter / less than in newton section)
         verbose		= true		-- print convergence rates if true
-      }
+      }]]--
+      convCheck =
+      { type    = "composite",
+        iterations  = 30,   -- number of iterations
+        absolute  = 0.5e-8, -- absolut value of defact to be reached; usually 1e-8 - 1e-10 (must be stricter / less than in newton section)
+        reduction = 1e-7,   -- reduction factor of defect to be reached; usually 1e-7 - 1e-8 (must be stricter / less than in newton section)
+        verbose   = true ,   -- print convergence rates if true
+        sub ={
+        {cmp ="p"},
+        {cmp="c"}
+        }
+      } 
   },
 
   time =
@@ -133,7 +156,7 @@ local henry =
     start 	= 0.0,				      -- [s]  start time point
     stop	= tstop,			        -- [s]  end time point
     max_time_steps = 1000,		  -- [1]	maximum number of time steps
-    dt		= 10000,		          -- [s]  initial time step
+    dt		= 43200,		          -- [s]  initial time step
     dtmin	= ARGS.dt,	          -- [s]  minimal time step
     dtmax	= 86400,	            -- [s]  maximal time step
     dtred	= 0.5,			          -- [1]  reduction factor for time step
@@ -152,12 +175,16 @@ local henry =
 }
 
 function HydroPressure_bnd(x, y, t, si)
-  pp = HydroPressure(x, y)
+  pp = HydroPressure_c(x, y)
   if pp < 0 then
     return false, 0
   else
     return true, pp
   end
+end
+
+function HydroPressure_c(x, y)
+  return henry2D_g * 1025 * (y + params.fs_depth)
 end
 
 function HydroPressure(x, y)

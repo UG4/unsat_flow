@@ -1,10 +1,10 @@
 -- config for modelling a drainage trench with constant groundwater flow
 
 Trench2D_rho = 998.23
-Trench2D_g = -1.271e8 --[m/h^2] must be negative!
+Trench2D_g = -9.81 --[m/h^2] must be negative!
 rhog = (-1.0)*Trench2D_rho*Trench2D_g
-numdays = 500
-tstop = numdays * 24 -- 60 days
+numdays = 1000
+tstop = numdays * 86400
 
 local trench2D =
 {
@@ -23,19 +23,19 @@ local trench2D =
       thetaS = 0.250, thetaR = 0.153,
       alpha = 0.79/rhog, n = 10.4,
       Ksat = 1.08},
-  
+
     { uid = "@TouchetSiltLoam",
       type = "vanGenuchten",
       thetaS = 0.469, thetaR = 0.190,
       alpha = 0.50/rhog, n = 7.09,
       Ksat = 3.03},
-  
+
     { uid = "@SiltLoam",
       type = "vanGenuchten",
       thetaS = 0.396, thetaR = 0.131,
       alpha = 0.423/rhog, n = 2.06,
       Ksat = 0.0496},
-  
+
     { uid = "@Clay",
       type = "vanGenuchten",
       thetaS = 0.446, thetaR = 0.0,
@@ -44,27 +44,27 @@ local trench2D =
 
     { uid = "@fictitious",
       type = "vanGenuchten",
-      thetaS = 0.9, thetaR = 0,
-      alpha = 2.5/rhog, n = 4,
+      thetaS = 0.5, thetaR = 0.1,
+      alpha = 0.5/rhog, n = 5,
       Ksat = 1}
   },
 
   flow =
   {
-    boussinesq = true,
+    boussinesq = false,
 
-    gravity = Trench2D_g, -- [m s^{-2}]
+    gravity = Trench2D_g,     -- [m s^{-2}]
     density =
-    { type = "ideal",     -- density function ["linear", "exp", "ideal"]
-      min = Trench2D_rho, -- [ kg m^{-3} ] water density
-      max = 1025.0,       -- [ kg m^{-3} ] saltwater density
+    { type = "ideal",         -- density function ["linear", "exp", "ideal"]
+      min = Trench2D_rho,     -- [ kg m^{-3} ] water density
+      max = 1025.0,           -- [ kg m^{-3} ] saltwater density
     },
 
     viscosity =
-    { type = "real",      -- viscosity function ["const", "real"]
-      mu0 = 2.783e-7      -- [ Pa h ]
+    { type = "real",          -- viscosity function ["const", "real"]
+      mu0 = 1.002e-3          -- [ Pa s ]
     },
-    diffusion   = 0.067886 -- [m^2/h]
+    diffusion   = 18.8571e-6  -- [ m^2/s ]
   },
   medium =
   {
@@ -89,9 +89,10 @@ local trench2D =
 
   boundary =
   {
-     --{cmp = "p", type = "flux", inner="Inner", bnd = "Trench", value = "Trench2DDrainageFluxBoundary"},
-     {cmp = "p", type = "dirichlet", bnd = "Trench", value = "Trench2DDrainagePressureBoundary"},
+     {cmp = "p", type = "flux", inner="Inner", bnd = "Trench", value = "Trench2DDrainageFluxBoundary"},
+     --{cmp = "p", type = "dirichlet", bnd = "Trench", value = "Trench2DDrainagePressureBoundary"},
      {cmp = "p", type = "dirichlet", bnd = "Aquifer", value = "Trench2DAquiferBoundary" },
+     {cmp = "p", type = "dirichlet", bnd = "Aquifer", value = "Trench2DAquiferFluxBoundary" },
      {cmp = "c", type = "dirichlet", bnd = "Trench", value = 1.0},
      {cmp = "c", type = "dirichlet", bnd = "Aquifer", value = 0},
   },
@@ -118,17 +119,16 @@ local trench2D =
 
   time =
   {
-    control = "limex",
-    start   = 0.0,            -- [s] start time point
-    stop  = tstop,            -- [s] end time point
-    max_time_steps = 1000,    -- [1]	maximum number of time steps
-    dt  = 1,                  -- [s] initial time step
-    dtmin	= ARGS.dt,	        -- [s]  minimal time step
-    dtmax	= 24,	              -- [s]  maximal time step
-    dtred = 0.5,              -- [1] reduction factor for time step
-    tol   = 1e-2
+    control	= "limex",
+    start 	= 0.0,				      -- [s]  start time point
+    stop	= tstop,			        -- [s]  end time point
+    max_time_steps = 1000,		  -- [1]	maximum number of time steps
+    dt		= 86400,		          -- [s]  initial time step
+    dtmin	= ARGS.dt,	          -- [s]  minimal time step
+    dtmax	= tstop/100,	            -- [s]  maximal time step
+    dtred	= 0.5,			          -- [1]  reduction factor for time step
+    tol 	= 1e-2,
   },
-
 
   output =
   {
@@ -137,7 +137,7 @@ local trench2D =
     -- scaling factor for correct time units.
     -- 1 means all units are given in seconds
     -- if units are scaled to days, then the scaling factor should be 86400
-    scale = 3600
+    scale = 1
   }
 
 }
@@ -145,27 +145,31 @@ local trench2D =
 
 function Trench2DDrainagePressureBoundaryTime(x, y, t, tD)
   if (t <= tD) then
-    return true, (2.0 - 1.0*t / tD) * rhog
+    return true, rhog * 2
   else
-    return true, 1 * rhog
+    return true, rhog
   end
 end
 
 function Trench2DDrainagePressureBoundary(x, y, t)
-  return Trench2DDrainagePressureBoundaryTime(x, y, t, 240)
+  return Trench2DDrainagePressureBoundaryTime(x, y, t, 86400*20)
 end
 
 function Trench2DDrainageFluxBoundaryTime(x, y, t, tD)
   if (t <= tD) then
-    return true, -6e-2
+    return true, -0.006
   else
-    return true, -3e-2
+    return true, -0.004
   end
 end
 
 function Trench2DDrainageFluxBoundary(x, y, t)
   return Trench2DDrainageFluxBoundaryTime(x, y, t, 240)
 end
+
+function Trench2DAquiferFluxBoundary(x, y, t)
+    return true, 0.001
+  end
 
 function Trench2DAquiferBoundary(x, y, t)
   return true, (1.0 - y) * rhog

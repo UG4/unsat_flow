@@ -2,7 +2,7 @@
 levee2D_rho = 998.23
 levee2D_g = -9.81 -- must be negative!
 rhog = (-1.0)*levee2D_rho*levee2D_g
-tstop = 100 * 86400 -- 100 days
+tstop = 1000 * 86400 -- 100 days
 Levee2D_tRise = 86400
 
 local levee2D =
@@ -18,29 +18,23 @@ local levee2D =
 
   -- medium parameters for vanGenuchten Model
   parameter = {
-    { uid = "@Sandstone",
-      type = "vanGenuchten",
-      thetaS = 0.250, thetaR = 0.153,
-      alpha = 0.79/rhog, n = 10.4,
-      Ksat = 1.25e-5},
-
-    { uid = "@TouchetSiltLoam",
-      type = "vanGenuchten",
-      thetaS = 0.469, thetaR = 0.190,
-      alpha = 0.50/rhog, n = 7.09,
-      Ksat = 3.507e-5},
-
     { uid = "@SiltLoam",
       type = "vanGenuchten",
       thetaS = 0.396, thetaR = 0.131,
       alpha = 0.423/rhog, n = 2.06,
-      Ksat = 5.741e-7},
+      Ksat = 0.0496},
 
+    { uid = "@Sand",
+      type = "vanGenuchten",
+      thetaS = 0.37, thetaR = 0.043,
+      alpha = 0.087/rhog, n = 1.58,
+      Ksat = 0.5},
+    
     { uid = "@Clay",
       type = "vanGenuchten",
       thetaS = 0.446, thetaR = 0.0,
       alpha = 0.152/rhog, n = 1.17,
-      Ksat = 9.491e-9}
+      Ksat = 8.2e-4},
   },
 
   flow =
@@ -55,7 +49,7 @@ local levee2D =
     },
 
     viscosity =
-    { type = "real",          -- viscosity function ["const", "real"]
+    { type = "const",          -- viscosity function ["const", "real"]
       mu0 = 1.002e-3          -- [ Pa s ]
     },
     diffusion   = 18.8571e-6  -- [ m^2/s ]
@@ -63,25 +57,25 @@ local levee2D =
    medium =
    {
       {   subsets = {"CLAY"},
-          porosity = "@SiltLoam",
+          porosity = "@Clay",
           saturation =
           { type = "vanGenuchten",
-            value = "@SiltLoam"
+            value = "@Clay"
           },
           conductivity =
           { type  = "vanGenuchten",
-            value   = "@SiltLoam"
+            value   = "@Clay"
           },
       },
       {   subsets = {"SAND_LEFT","SAND_RIGHT"},
-          porosity = "@SiltLoam",
+          porosity = "@Sand",
           saturation    =
           { type = "vanGenuchten",
-            value = "@SiltLoam"
+            value = "@Sand"
           },
           conductivity  =
-          { type      = "vanGenuchten",
-            value = "@SiltLoam"
+          { type = "vanGenuchten",
+            value = "@Sand"
           },
       },
   },
@@ -94,11 +88,17 @@ local levee2D =
 
   boundary =
    {
-      {cmp = "p", type = "dirichlet", bnd = "AirBnd", value = 0.0},
-      {cmp = "p", type = "dirichlet", bnd = "WaterBnd", value = "Levee2D_RisingFlood_p"},
+      --{cmp = "p", type = "dirichlet", bnd = "AirBnd", value = 0.0},
+      --{cmp = "c", type = "dirichlet", bnd = "AirBnd", value = 0.0 },
+
+      --{cmp = "p", type = "dirichlet", bnd = "WaterBnd", value = "Levee2D_HydrostaticHead"},
+      --{cmp = "c", type = "dirichlet", bnd = "WaterBnd", value = 1.0},
+
       {cmp = "p", type = "dirichlet", bnd = "ToeBnd", value = 0.0 },
       {cmp = "c", type = "dirichlet", bnd = "ToeBnd", value = 0.0 },
+      
       {cmp = "c", type = "dirichlet", bnd = "WaterBnd", value = "Levee2D_RisingFlood_c"},
+      {cmp = "p", type = "dirichlet", bnd = "WaterBnd", value = "Levee2D_RisingFlood_p"},
    },
 
   linSolver =
@@ -153,7 +153,7 @@ function Levee2D_RisingFlood_p(x, y, t, si)
   if (y <= pegel) then
     return true, (pegel - y) * rhog
   end
-  return false, 0.0
+  return false, 0
 end
 
 function Levee2D_RisingFlood_c(x, y, t, si)

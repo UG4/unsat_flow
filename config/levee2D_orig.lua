@@ -1,97 +1,97 @@
--- config for modelling a drainage trench with constant groundwater flow
+-- additional constants for vanGenuchten
+levee2D_rho = 1
+levee2D_g = -1 -- must be negative!
+rhog = 1
+tstop = 1000 * 86400 -- 100 days
+Levee2D_tRise = 86400
 
-Trench2D_rho = 998.23
-Trench2D_g = -9.81 -- must be negative!
-rhog = (-1.0)*Trench2D_rho*Trench2D_g
-numdays = 500
-tstop = numdays * 86400 -- 500 days
-
-local trench2D =
+local levee2D =
 {
   -- The domain specific setup
   domain =
   {
     dim = 2,
-    grid = "grids/trench2D.ugx",
+    grid = "grids/levee2D.ugx",
     numRefs = ARGS.numRefs,
     numPreRefs = ARGS.numPreRefs,
   },
 
   -- medium parameters for vanGenuchten Model
   parameter = {
-    { uid = "@Sandstone",
-      type = "vanGenuchten",
-      thetaS = 0.250, thetaR = 0.153,
-      alpha = 0.79/rhog, n = 10.4,
-      Ksat = 1.25e-5},
-
-    { uid = "@TouchetSiltLoam",
-      type = "vanGenuchten",
-      thetaS = 0.469, thetaR = 0.190,
-      alpha = 0.50/rhog, n = 7.09,
-      Ksat = 3.507e-5},
-
-    { uid = "@SiltLoam",
-      type = "vanGenuchten",
-      thetaS = 0.396, thetaR = 0.131,
-      alpha = 0.423/rhog, n = 2.06,
-      Ksat = 5.741e-7},
-
     { uid = "@Clay",
       type = "vanGenuchten",
       thetaS = 0.446, thetaR = 0.0,
       alpha = 0.152/rhog, n = 1.17,
-      Ksat = 9.491e-9}
+      Ksat = 0.00432},
+
+    { uid = "@Sand",
+      type = "vanGenuchten",
+      thetaS = 0.37, thetaR = 0.043,
+      alpha = 0.087/rhog, n = 1.58,
+      Ksat = 0.02592},
   },
 
   flow =
   {
     boussinesq = false,
 
-    gravity = Trench2D_g,       -- [m s^{-2}]
+    gravity = levee2D_g,      -- [ m s^{-2}], must be negative!
     density =
-    { type = "ideal",           -- density function ["linear", "exp", "ideal"]
-      min = Trench2D_rho,       -- [ kg m^{-3} ] water density
-      max = 1025.0,             -- [ kg m^{-3} ] saltwater density
+    { type = "const",         -- density function ["linear", "exp", "ideal"]
+      min = levee2D_rho,      -- [ kg m^{-3} ] water density
+      max = 1,           -- [ kg m^{-3} ] saltwater density
     },
 
     viscosity =
-    { type = "real",            -- viscosity function ["const", "real"]
-      mu0 = 1.002e-3            -- [ kg m^{-3} ]
+    { type = "const",          -- viscosity function ["const", "real"]
+      mu0 = 1          -- [ Pa s ]
     },
-    diffusion   = 18.8571e-6,   -- [m^2/s]
+    diffusion   = 18.8571e-6  -- [ m^2/s ]
   },
    medium =
    {
-      {   subsets = {"Inner"},
-          porosity = "@TouchetSiltLoam", -- uid of a material or number
+      {   subsets = {"CLAY"},
+          porosity = "@Clay",
           saturation =
           { type = "vanGenuchten",
-            value = "@TouchetSiltLoam",
+            value = "@Clay"
           },
           conductivity =
           { type  = "vanGenuchten",
-            value   = "@TouchetSiltLoam",
+            value   = "@Clay"
+          },
+      },
+      {   subsets = {"SAND_LEFT","SAND_RIGHT"},
+          porosity = "@Sand",
+          saturation    =
+          { type = "vanGenuchten",
+            value = "@Sand"
+          },
+          conductivity  =
+          { type      = "vanGenuchten",
+            value = "@Sand"
           },
       },
   },
 
-  initial=
+   initial =
    {
-       { cmp = "p", value = "Trench2DPressureStart"},
-       { cmp = "c", value = 0}
+      { cmp = "c", value = 0.0 },
+      { cmp = "p", value = "Levee2D_HydrostaticHead" },
    },
 
   boundary =
-  {
-     {cmp = "p", type = "dirichlet", bnd = "Trench", value = "Trench2DDrainagePressureBoundary"},
-     {cmp = "p", type = "dirichlet", bnd = "Aquifer", value = "Trench2DAquiferBoundary" },
-     {cmp = "c", type = "dirichlet", bnd = "Trench", value = 1},
-     {cmp = "c", type = "dirichlet", bnd = "Aquifer", value = 0},
-  },
+   {
+      {cmp = "p", type = "dirichlet", bnd = "AirBnd", value = 0.0},
+      {cmp = "p", type = "dirichlet", bnd = "WaterBnd", value = "Levee2D_HydrostaticHead"},
+      --{cmp = "p", type = "dirichlet", bnd = "WaterBnd", value = "Levee2D_RisingFlood_p"},
+      {cmp = "p", type = "dirichlet", bnd = "ToeBnd", value = 0.0 },
+      {cmp = "c", type = "dirichlet", bnd = "ToeBnd", value = 0.0 },
+      --{cmp = "c", type = "dirichlet", bnd = "WaterBnd", value = "Levee2D_RisingFlood_c"},
+   },
 
   linSolver =
-  { type = "bicgstab",			-- linear solver type ["bicgstab", "cg", "linear"]
+  { type = "bicgstab",			                      -- linear solver type ["bicgstab", "cg", "linear"]
     precond =
     { type 		= "gmg",	                          -- preconditioner ["gmg", "ilu", "ilut", "jac", "gs", "sgs"]
       smoother 	= {type = "ilu", overlap = true},	-- gmg-smoother ["ilu", "ilut", "jac", "gs", "sgs"]
@@ -123,37 +123,40 @@ local trench2D =
     tol 	= 1e-2,
   },
 
+
+  -- config for vtk output
   output =
   {
-    file = "simulations/trench2D_seconds_touchetsiltloam/", -- must be a folder!
+    file = "./", -- must be a folder!
     data = {"c", "p", "rho", "mu", "kr", "s", "q", "ff", "tf", "af", "df", "pc", "k"},
     -- scaling factor for correct time units.
     -- 1 means all units are given in seconds
     -- if units are scaled to days, then the scaling factor should be 86400
     scale = 1
-  }
-
+  },
 }
 
-
-function Trench2DDrainagePressureBoundaryTime(x, y, t, tD)
-  if (t <= tD) then
-    return true, (2.2*t / tD - 2.0) * rhog
-  else
-    return true, 0.2 * rhog
+-- rising flood
+function Levee2D_RisingFlood_p(x, y, t, si)
+  local pegel = math.min(t/Levee2D_tRise, 1.0)*5.85
+  if (y <= pegel) then
+    return true, (pegel - y)
   end
+  return false, 0.0
 end
 
-function Trench2DDrainagePressureBoundary(x, y, t)
-  return Trench2DDrainagePressureBoundaryTime(x, y, t, 86400)
+function Levee2D_RisingFlood_c(x, y, t, si)
+  local pegel = math.min(t/Levee2D_tRise, 1.0)*5.85
+  if (y <= pegel) then
+    return true, 1.0
+  end
+  return false, 0.0
 end
 
-function Trench2DAquiferBoundary(x, y, t)
-  return true, (1.0 - y) * rhog
+-- initial pressure function
+function Levee2D_HydrostaticHead(x, y, t, si)
+  return (6-y)
 end
 
-function Trench2DPressureStart(x, y, t)
-  return (1.0 - y) * rhog
-end
 
-return trench2D
+return levee2D

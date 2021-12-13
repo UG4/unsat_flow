@@ -1,10 +1,10 @@
 -- config for modelling a drainage trench with constant groundwater flow
 
 Trench2D_rho = 998.23
-Trench2D_g = -9.81 --[m/h^2] must be negative!
+Trench2D_g = -9.81 -- must be negative!
 rhog = (-1.0)*Trench2D_rho*Trench2D_g
-numdays = 500
-tstop = numdays * 86400
+numdays = 900
+tstop = numdays * 86400 -- 500 days
 
 local trench2D =
 {
@@ -17,82 +17,58 @@ local trench2D =
     numPreRefs = ARGS.numPreRefs,
   },
 
+  -- medium parameters for vanGenuchten Model
   parameter = {
-    { uid = "@Sandstone",
-      type = "vanGenuchten",
-      thetaS = 0.250, thetaR = 0.153,
-      alpha = 0.79/rhog, n = 10.4,
-      Ksat = 1.25e-5},
-
-    { uid = "@TouchetSiltLoam",
-      type = "vanGenuchten",
-      thetaS = 0.469, thetaR = 0.190,
-      alpha = 0.50/rhog, n = 7.09,
-      Ksat = 3.507e-5},
-
     { uid = "@SiltLoam",
       type = "vanGenuchten",
       thetaS = 0.396, thetaR = 0.131,
       alpha = 0.423/rhog, n = 2.06,
-      Ksat = 5.741e-7},
-
-    { uid = "@Clay",
-      type = "vanGenuchten",
-      thetaS = 0.446, thetaR = 0.0,
-      alpha = 0.152/rhog, n = 1.17,
-      Ksat = 9.491e-9},
-
-    { uid = "@fictitious",
-      type = "vanGenuchten",
-      thetaS = 0.9, thetaR = 0,
-      alpha = 2.5/rhog, n = 2.5,
-      Ksat = 1}
+      Ksat = 0.0496},
   },
 
   flow =
   {
-    boussinesq = true,
+    boussinesq = false,
 
-    gravity = Trench2D_g,     -- [m s^{-2}]
+    gravity = Trench2D_g,       -- [m s^{-2}]
     density =
-    { type = "ideal",         -- density function ["linear", "exp", "ideal"]
-      min = Trench2D_rho,     -- [ kg m^{-3} ] water density
-      max = 1025.0,           -- [ kg m^{-3} ] saltwater density
+    { type = "ideal",           -- density function ["linear", "exp", "ideal"]
+      min = Trench2D_rho,       -- [ kg m^{-3} ] water density
+      max = 1025.0,             -- [ kg m^{-3} ] saltwater density
     },
 
     viscosity =
-    { type = "real",          -- viscosity function ["const", "real"]
-      mu0 = 1.002e-3          -- [ Pa s ]
+    { type = "const",            -- viscosity function ["const", "real"]
+      mu0 = 1.002e-3            -- [ kg m^{-3} ]
     },
-    diffusion   = 18.8571e-6  -- [ m^2/s ]
+    diffusion   = 18.8571e-6,   -- [m^2/s]
   },
-  medium =
-  {
-    { subsets = {"Inner"},
-      porosity = "@fictitious", -- uid of a material or number
-      saturation =
-      { type = "vanGenuchten",
-        value = "@fictitious",
+   medium =
+   {
+      {   subsets = {"Inner"},
+          porosity = "@SiltLoam", -- uid of a material or number
+          saturation =
+          { type = "vanGenuchten",
+            value = "@SiltLoam",
+          },
+          conductivity =
+          { type  = "vanGenuchten",
+            value   = "@SiltLoam",
+          },
       },
-      conductivity =
-      { type  = "vanGenuchten",
-        value   = "@fictitious",
-      },
-    },
   },
 
   initial=
-  {
-    { cmp = "p", value = "Trench2DPressureStart"},
-    { cmp = "c", value = 0}
-  },
+   {
+       { cmp = "p", value = "Trench2DPressureStart"},
+       { cmp = "c", value = 0}
+   },
 
   boundary =
   {
-     --{cmp = "p", type = "flux", inner="Inner", bnd = "Trench", value = "Trench2DDrainageFluxBoundary"},
      {cmp = "p", type = "dirichlet", bnd = "Trench", value = "Trench2DDrainagePressureBoundary"},
      {cmp = "p", type = "dirichlet", bnd = "Aquifer", value = "Trench2DAquiferBoundary" },
-     {cmp = "c", type = "dirichlet", bnd = "Trench", value = 1.0},
+     {cmp = "c", type = "dirichlet", bnd = "Trench", value = 0},
      {cmp = "c", type = "dirichlet", bnd = "Aquifer", value = 0},
   },
 
@@ -122,9 +98,9 @@ local trench2D =
     start 	= 0.0,				      -- [s]  start time point
     stop	= tstop,			        -- [s]  end time point
     max_time_steps = 1000,		  -- [1]	maximum number of time steps
-    dt		= 20000,		          -- [s]  initial time step
+    dt		= 43200,		          -- [s]  initial time step
     dtmin	= ARGS.dt,	          -- [s]  minimal time step
-    dtmax	= 86400,	            -- [s]  maximal time step
+    dtmax	= tstop/100,	            -- [s]  maximal time step
     dtred	= 0.5,			          -- [1]  reduction factor for time step
     tol 	= 1e-2,
   },
@@ -132,7 +108,7 @@ local trench2D =
   output =
   {
     file = "./", -- must be a folder!
-    data = {"c", "p", "gradc", "gradp", "rho", "mu", "kr", "s", "q", "ff", "tf", "af", "df", "pc", "k"},
+    data = {"c", "p", "rho", "mu", "kr", "s", "q", "ff", "tf", "af", "df", "pc", "k"},
     -- scaling factor for correct time units.
     -- 1 means all units are given in seconds
     -- if units are scaled to days, then the scaling factor should be 86400
@@ -144,26 +120,14 @@ local trench2D =
 
 function Trench2DDrainagePressureBoundaryTime(x, y, t, tD)
   if (t <= tD) then
-    return true, (1.0 - 1.0*t / tD) * rhog
+    return true, (2.2*t / tD - 2.0) * Trench2D_rho * 9.81
   else
-    return true, 1 * rhog
+    return true, 0.2 * Trench2D_rho * 9.81
   end
 end
 
 function Trench2DDrainagePressureBoundary(x, y, t)
-  return Trench2DDrainagePressureBoundaryTime(x, y, t, 240)
-end
-
-function Trench2DDrainageFluxBoundaryTime(x, y, t, tD)
-  if (t <= tD) then
-    return true, -6e-3
-  else
-    return true, -3e-3
-  end
-end
-
-function Trench2DDrainageFluxBoundary(x, y, t)
-  return Trench2DDrainageFluxBoundaryTime(x, y, t, 240)
+  return Trench2DDrainagePressureBoundaryTime(x, y, t, 86400)
 end
 
 function Trench2DAquiferBoundary(x, y, t)
@@ -175,6 +139,3 @@ function Trench2DPressureStart(x, y, t)
 end
 
 return trench2D
-
--- mpirun -np 6 ugshell -ex unsat_flow_app/unsat_flow_driver.lua --problem-id "trench2D_day" --dt 0.0000001
--- mpirun --use-hwthread-cpus ugshell -ex unsat_flow_app/unsat_flow_driver.lua --problem-id "trench2D_day" --dt 0.0000001
