@@ -1,10 +1,10 @@
 -- config for modelling a drainage trench with constant groundwater flow
 
 Trench2D_rho = 998.23
-Trench2D_g = -9.81 --[m/h^2] must be negative!
+Trench2D_g = -9.81 -- must be negative!
 rhog = (-1.0)*Trench2D_rho*Trench2D_g
-numdays = 600
-tstop = numdays * 86400
+numdays = 100
+tstop = numdays * 86400 -- 500 days
 
 local trench2D =
 {
@@ -17,6 +17,7 @@ local trench2D =
     numPreRefs = ARGS.numPreRefs,
   },
 
+  -- medium parameters for vanGenuchten Model
   parameter = {
     { uid = "@Sandstone",
       type = "vanGenuchten",
@@ -42,10 +43,10 @@ local trench2D =
       alpha = 0.152/rhog, n = 1.17,
       Ksat = 8.2e-4},
 
-      { uid = "@fictitious",
+    { uid = "@fictitious",
       type = "vanGenuchten",
-      thetaS = 0.6, thetaR = 0.1,
-      alpha = 2.5/rhog, n = 4,
+      thetaS = 0.65, thetaR = 0,
+      alpha = 2.5/rhog, n = 2.5,
       Ksat = 1}
   },
 
@@ -53,45 +54,45 @@ local trench2D =
   {
     boussinesq = false,
 
-    gravity = Trench2D_g,     -- [m s^{-2}]
+    gravity = Trench2D_g,       -- [m s^{-2}]
     density =
-    { type = "ideal",         -- density function ["linear", "exp", "ideal"]
-      min = Trench2D_rho,     -- [ kg m^{-3} ] water density
-      max = 1025.0,           -- [ kg m^{-3} ] saltwater density
+    { type = "ideal",           -- density function ["linear", "exp", "ideal"]
+      min = Trench2D_rho,       -- [ kg m^{-3} ] water density
+      max = 1025.0,             -- [ kg m^{-3} ] saltwater density
     },
 
     viscosity =
-    { type = "const",          -- viscosity function ["const", "real"]
-      mu0 = 1.002e-3          -- [ Pa s ]
+    { type = "const",            -- viscosity function ["const", "real"]
+      mu0 = 1.002e-3            -- [ kg m^{-3} ]
     },
-    diffusion   = 18.8571e-6  -- [ m^2/s ]
+    diffusion   = 18.8571e-6,   -- [m^2/s]
   },
-  medium =
-  {
-    { subsets = {"Inner"},
-      porosity = "@fictitious", -- uid of a material or number
-      saturation =
-      { type = "vanGenuchten",
-        value = "@fictitious",
+   medium =
+   {
+      {   subsets = {"Inner"},
+          porosity = "@Sandstone", -- uid of a material or number
+          saturation =
+          { type = "vanGenuchten",
+            value = "@Sandstone",
+          },
+          conductivity =
+          { type  = "vanGenuchten",
+            value   = "@Sandstone",
+          },
       },
-      conductivity =
-      { type  = "vanGenuchten",
-        value   = "@fictitious",
-      },
-    },
   },
 
   initial=
-  {
-    { cmp = "p", value = "Trench2DPressureStart"},
-    { cmp = "c", value = 0}
-  },
+   {
+       { cmp = "p", value = "Trench2DPressureStart"},
+       { cmp = "c", value = 0}
+   },
 
   boundary =
   {
      {cmp = "p", type = "dirichlet", bnd = "Trench", value = "Trench2DDrainagePressureBoundary"},
      {cmp = "p", type = "dirichlet", bnd = "Aquifer", value = "Trench2DAquiferBoundary" },
-     {cmp = "c", type = "dirichlet", bnd = "Trench", value = 1.0},
+     {cmp = "c", type = "dirichlet", bnd = "Trench", value = 1},
      {cmp = "c", type = "dirichlet", bnd = "Aquifer", value = 0},
   },
 
@@ -121,7 +122,7 @@ local trench2D =
     start 	= 0.0,				      -- [s]  start time point
     stop	= tstop,			        -- [s]  end time point
     max_time_steps = 1000,		  -- [1]	maximum number of time steps
-    dt		= 86400,		          -- [s]  initial time step
+    dt		= 1600,		          -- [s]  initial time step
     dtmin	= ARGS.dt,	          -- [s]  minimal time step
     dtmax	= tstop/100,	            -- [s]  maximal time step
     dtred	= 0.5,			          -- [1]  reduction factor for time step
@@ -131,7 +132,7 @@ local trench2D =
   output =
   {
     file = "./", -- must be a folder!
-    data = {"c", "p", "gradc", "gradp", "rho", "mu", "kr", "s", "q", "ff", "tf", "af", "df", "pc", "k"},
+    data = {"c", "p", "rho", "mu", "kr", "s", "q", "ff", "tf", "af", "df", "pc", "k"},
     -- scaling factor for correct time units.
     -- 1 means all units are given in seconds
     -- if units are scaled to days, then the scaling factor should be 86400
@@ -139,6 +140,7 @@ local trench2D =
   }
 
 }
+
 
 function Trench2DDrainagePressureBoundaryTime(x, y, t, tD)
   if (t <= tD) then
@@ -161,6 +163,3 @@ function Trench2DPressureStart(x, y, t)
 end
 
 return trench2D
-
--- mpirun -np 6 ugshell -ex unsat_flow_app/unsat_flow_driver.lua --problem-id "trench2D_day" --dt 0.0000001
--- mpirun --use-hwthread-cpus ugshell -ex unsat_flow_app/unsat_flow_driver.lua --problem-id "trench2D_day" --dt 0.0000001

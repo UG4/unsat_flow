@@ -4,7 +4,7 @@
 params =
 {
 --	physical parameters
-	fs_depth = util.GetParamNumber("-fsDepth", 0.0), -- depth of the free surface at the right boundary
+	fs_depth = util.GetParamNumber("-fsDepth", 0.5), -- depth of the free surface at the right boundary
 	recharge = util.GetParamNumber("-recharge", 0.0000165), -- "rain"
 }
 
@@ -77,7 +77,7 @@ local henry =
   {
     -- Sea
     { cmp = "c", type = "dirichlet", bnd = "Sea", value = 1.0 },
-    { cmp = "p", type = "dirichlet", bnd = "Sea", value = "HydroPressure_bnd" },
+    { cmp = "p", type = "dirichlet", bnd = "Sea", value = "HydroPressure_c" },
 
     -- Land
     { cmp = "c", type = "dirichlet", bnd = "Inflow", value = 0.0 },

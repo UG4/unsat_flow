@@ -98,7 +98,7 @@ function ProblemDisc:CreateElemDisc(subdom, medium)
     local permeability = ScaleAddLinkerMatrix()
     -- needs scaling depending on hydraulic conductivities scale in the Richardsplugin
     permeability:add(conductivity, self.problem.flow.viscosity.mu0/(r_scale*self.problem.flow.density.min*self.problem.flow.gravity))
-    --permeability:add(conductivity, 1.0)
+    print("saturated permeability: "..(Ksat*self.problem.flow.viscosity.mu0/(r_scale*self.problem.flow.density.min*self.problem.flow.gravity)))
 
     -- Darcy Velocity
     -- $\vec q := -k*k(p)/mu (\grad p - \rho \vec g)$
@@ -143,8 +143,8 @@ function ProblemDisc:CreateElemDisc(subdom, medium)
     else
         elemDisc["flow"]:set_mass(storage)
         elemDisc["flow"]:set_flux(fluidFlux)
-
     end
+    elemDisc["flow"]:set_mass_scale(0.0)
 
 	-----------------------------------------
 	-- Equation [2]
@@ -156,7 +156,29 @@ function ProblemDisc:CreateElemDisc(subdom, medium)
 
     -- diffusive flux: \Phi S_w \rho_w D \nabla \omega
     local diffusion = ScaleAddLinkerMatrix()
-    diffusion:add(volufrac*self.problem.flow.density.min, self.problem.flow.diffusion)
+    diffusion:add(volufrac, self.problem.flow.diffusion*self.problem.flow.density.min)
+
+    -- dispersive flux
+    local alphaT = 0.1
+    local alphaL = 0.1
+    local dispersion0 = BearScheidegger(DarcyVelocity, alphaT, alphaL)
+ 
+    local saturation2 =ScaleAddLinkerNumber()
+    saturation2:add(saturation,saturation)
+ 
+    local saturation3 =ScaleAddLinkerNumber()
+    saturation3:add(saturation2,saturation)
+ 
+    local saturation4 =ScaleAddLinkerNumber()
+    saturation4:add(saturation2,saturation2)
+ 
+    local inverseSat = InverseLinker()
+    inverseSat:divide(1.0, saturation4)
+ 
+    local dispersion = ScaleAddLinkerMatrix()
+    dispersion:add(inverseSat,dispersion0)
+
+    --diffusion:add(density, dispersion)
 
     -- advective flux is equal to fluidFlux * mass fraction
     elemDisc["transport"]:set_mass_scale(storage)

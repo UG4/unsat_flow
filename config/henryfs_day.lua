@@ -4,15 +4,15 @@
 params =
 {
 --	physical parameters
-	fs_depth = util.GetParamNumber("-fsDepth", 0.0), -- depth of the free surface at the right boundary
-	recharge = util.GetParamNumber("-recharge", 0.0000165), -- "rain"
+	fs_depth = util.GetParamNumber("-fsDepth", 0.2), -- depth of the free surface at the right boundary
+	recharge = util.GetParamNumber("-recharge", 1), -- "rain"
 }
 
 -- additional constants for vanGenuchten
 henry2D_rho = 998.23
-henry2D_g = -9.81 -- must be negative!
+henry2D_g = -7.323e10 -- must be negative!
 rhog = (-1.0)*henry2D_rho*henry2D_g
-tstop = 50 * 86400 -- 100 days
+tstop = 1000 -- 100 days
 
 
 local henry =
@@ -26,13 +26,12 @@ local henry =
     numPreRefs = ARGS.numPreRefs,
   },
 
-  -- medium parameters for vanGenuchten Model
   parameter = {
     { uid = "@Sand",
       type = "vanGenuchten",
-      thetaS = 0.37, thetaR = 0.043,
+      thetaS = 0.35, thetaR = 0.043,
       alpha = 0.087/rhog, n = 1.58,
-      Ksat = 1}
+      Ksat = 1},
   },
 
   flow =
@@ -48,9 +47,9 @@ local henry =
 
     viscosity =
     { type = "const",          -- viscosity function ["const", "real"]
-      mu0 = 1.002e-3                   -- [ Pa s ]
+      mu0 = 1.16e-8                  -- [ Pa s ]
     },
-    diffusion   = 7.64e-8 -- [ m^2/s ]
+    diffusion   = 0.0066--0.01886  -- [ m^2/s ]
   },
    medium =
    {
@@ -76,16 +75,16 @@ local henry =
   boundary =
   {
     -- Sea
-    { cmp = "c", type = "dirichlet", bnd = "Sea", value = 1.0 },
+    { cmp = "c", type = "dirichlet", bnd = "Sea", value = "salt_bnd" },
     { cmp = "p", type = "dirichlet", bnd = "Sea", value = "HydroPressure_bnd" },
 
     -- Land
-    { cmp = "c", type = "dirichlet", bnd = "Inflow", value = 0.0 },
-    { cmp = "p", type = "flux", bnd = "Inflow", inner = "Medium", value = -7.64e-5 }
+    -- { cmp = "c", type = "dirichlet", bnd = "Inflow", value = 0.0 },
+    -- { cmp = "p", type = "flux", bnd = "Inflow", inner = "Medium", value = -6.6 }
 
     -- Top
-    --{ cmp = "p", type = "flux", bnd = "Top", inner="Medium", value=params.recharge},
-    --{ cmp = "c", type = "dirichlet", bnd = "Top", value = 0.0 },
+    { cmp = "p", type = "flux", bnd = "Top", inner="Medium", value=(-1.0)*params.recharge},
+    { cmp = "c", type = "dirichlet", bnd = "Top", value = 0.0 },
 
   },
 
@@ -126,9 +125,9 @@ local henry =
     start 	= 0.0,				      -- [s]  start time point
     stop	= tstop,			        -- [s]  end time point
     max_time_steps = 1000,		  -- [1]	maximum number of time steps
-    dt		= 1000,		          -- [s]  initial time step
+    dt		= 0.1,		          -- [s]  initial time step
     dtmin	= ARGS.dt,	          -- [s]  minimal time step
-    dtmax	= tstop/10,	            -- [s]  maximal time step
+    dtmax	= 86400,	            -- [s]  maximal time step
     dtred	= 0.5,			          -- [1]  reduction factor for time step
     tol 	= 1e-2,
   },
@@ -140,7 +139,7 @@ local henry =
     -- scaling factor for correct time units.
     -- 1 means all units are given in seconds
     -- if units are scaled to days, then the scaling factor should be 86400
-    scale = 1
+    scale = 86400
   },
 }
 
@@ -150,6 +149,15 @@ function HydroPressure_bnd(x, y, t, si)
     return false, 0
   else
     return true, pp
+  end
+end
+
+function salt_bnd(x, y, t, si)
+  pp = HydroPressure_c(x, y)
+  if pp < 0 then
+    return false, 0
+  else
+    return true, 1.0
   end
 end
 

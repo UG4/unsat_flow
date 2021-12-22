@@ -2,7 +2,7 @@
 levee2D_rho = 998.23
 levee2D_g = -9.81 -- must be negative!
 rhog = (-1.0)*levee2D_rho*levee2D_g
-tstop = 200 * 86400 -- 100 days
+tstop = 100 * 86400 -- 100 days
 Levee2D_tRise = 86400
 
 local levee2D =
@@ -57,14 +57,14 @@ local levee2D =
    medium =
    {
       {   subsets = {"CLAY"},
-          porosity = "@Clay",
+          porosity = "@Sand",
           saturation =
           { type = "vanGenuchten",
-            value = "@Clay"
+            value = "@Sand"
           },
           conductivity =
           { type  = "vanGenuchten",
-            value   = "@Clay"
+            value   = "@Sand"
           },
       },
       {   subsets = {"SAND_LEFT","SAND_RIGHT"},
@@ -127,7 +127,7 @@ local levee2D =
     start 	= 0.0,				      -- [s]  start time point
     stop	= tstop,			        -- [s]  end time point
     max_time_steps = 10000,		  -- [1]	maximum number of time steps
-    dt		= 0.1,		            -- [s]  initial time step
+    dt		= 43200,		          -- [s]  initial time step
     dtmin	= ARGS.dt,	          -- [s]  minimal time step
     dtmax	= tstop/100,	            -- [s]  maximal time step
     dtred	= 0.5,			          -- [1]  reduction factor for time step
