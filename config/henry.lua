@@ -137,10 +137,6 @@ local henry =
   {
     file = "./", -- must be a folder!
     data = {"c", "p", "rho", "mu", "kr", "s", "q", "ff", "tf", "af", "df", "pc", "k"},
-    -- scaling factor for correct time units.
-    -- 1 means all units are given in seconds
-    -- if units are scaled to days, then the scaling factor should be 86400
-    scale = 1
   },
 }
 

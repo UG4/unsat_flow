@@ -158,28 +158,6 @@ function ProblemDisc:CreateElemDisc(subdom, medium)
     local diffusion = ScaleAddLinkerMatrix()
     diffusion:add(volufrac, self.problem.flow.diffusion*self.problem.flow.density.min)
 
-    -- dispersive flux
-    local alphaT = 0.1
-    local alphaL = 0.1
-    local dispersion0 = BearScheidegger(DarcyVelocity, alphaT, alphaL)
- 
-    local saturation2 =ScaleAddLinkerNumber()
-    saturation2:add(saturation,saturation)
- 
-    local saturation3 =ScaleAddLinkerNumber()
-    saturation3:add(saturation2,saturation)
- 
-    local saturation4 =ScaleAddLinkerNumber()
-    saturation4:add(saturation2,saturation2)
- 
-    local inverseSat = InverseLinker()
-    inverseSat:divide(1.0, saturation4)
- 
-    local dispersion = ScaleAddLinkerMatrix()
-    dispersion:add(inverseSat,dispersion0)
-
-    --diffusion:add(density, dispersion)
-
     -- advective flux is equal to fluidFlux * mass fraction
     elemDisc["transport"]:set_mass_scale(storage)
     elemDisc["transport"]:set_velocity(fluidFlux)
@@ -189,9 +167,6 @@ function ProblemDisc:CreateElemDisc(subdom, medium)
     -- capillary pressure: air pressure is set to 0
     -- => p_c = - p_w
     local capillary = -1.0*elemDisc["flow"]:value()
-
-    --local capillary = ScaleAddLinkerNumber()
-    --capillary:add(-1.0*elemDisc["flow"]:value(), 1/self.problem.output.scale^2)
 
     -- setting capillary pressure as inputs for the van Genuchten model
     if medium.conductivity.type == "vanGenuchten" then
@@ -204,9 +179,7 @@ function ProblemDisc:CreateElemDisc(subdom, medium)
 
     print("Created Element Discretisation for Subset ", subdom)
 
-    -- Preparations for IO. variables may be given in units other than seconds
-    -- they may have to be converted back to seconds using the scaling factor
-    -- given at problem.output.scale
+    -- Preparations for IO.
     local advFlux = ScaleAddLinkerVector()
     c_value = GridFunctionNumberData(self.u, "c")
     advFlux:add(c_value, fluidFlux)
@@ -216,14 +189,14 @@ function ProblemDisc:CreateElemDisc(subdom, medium)
     difFlux:add(volufrac, self.problem.flow.density.min*self.problem.flow.diffusion*gradC)
 
     local si = self.domain:subset_handler():get_subset_index(subdom)
-    self.CompositeCapillary:add(si, capillary/self.problem.output.scale^2)
+    self.CompositeCapillary:add(si, capillary)
     self.CompositeConductivity:add(si, conductivity)
     self.CompositeSaturation:add(si, saturation)
-    self.CompositeDarcyVelocity:add(si, DarcyVelocity*self.problem.output.scale)
-    self.CompositeFluidFlux:add(si, fluidFlux*self.problem.output.scale)
-    self.CompositeTransportFlux:add(si, (advFlux - difFlux)*self.problem.output.scale)
-    self.CompositeAdvectiveFlux:add(si, advFlux*self.problem.output.scale)
-    self.CompositeDiffusiveFlux:add(si, difFlux*self.problem.output.scale)
+    self.CompositeDarcyVelocity:add(si, DarcyVelocity)
+    self.CompositeFluidFlux:add(si, fluidFlux)
+    self.CompositeTransportFlux:add(si, (advFlux - difFlux))
+    self.CompositeAdvectiveFlux:add(si, advFlux)
+    self.CompositeDiffusiveFlux:add(si, difFlux)
 
     
     return elemDisc
@@ -293,10 +266,10 @@ function ProblemDisc:CreateVTKOutput()
     for i, v in ipairs(self.problem.output.data) do
         -- concentration and pressure
         if v == "p" then
-           self.vtk:select_nodal(GridFunctionNumberData(self.u, v)/self.problem.output.scale^2, v)
+           self.vtk:select_nodal(GridFunctionNumberData(self.u, v), v)
         -- concentration gradient
         elseif v == "gradp" then
-            self.vtk:select_element(GridFunctionGradientData(self.u, "p")/self.problem.output.scale^2, v)
+            self.vtk:select_element(GridFunctionGradientData(self.u, "p"), v)
         -- concentration
         elseif v == "c" then
             self.vtk:select_nodal(GridFunctionNumberData(self.u, v), v)
@@ -308,7 +281,7 @@ function ProblemDisc:CreateVTKOutput()
             self.vtk:select_element(self.rho, v)
         -- viscosity
         elseif v == "mu" and self.problem.flow.viscosity.type ~= "const" then
-            self.vtk:select_element(self.mu/self.problem.output.scale, v)
+            self.vtk:select_element(self.mu, v)
         -- relative conductivity
         elseif v == "kr" then
             self.vtk:select_element(self.CompositeConductivity, v)

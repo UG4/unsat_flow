@@ -2,7 +2,7 @@
 levee2D_rho = 998.23
 levee2D_g = -9.81 -- must be negative!
 rhog = (-1.0)*levee2D_rho*levee2D_g
-tstop = 100 * 86400 -- 100 days
+tstop = 40 * 86400 -- 100 days
 Levee2D_tRise = 86400
 
 local levee2D =
@@ -28,7 +28,7 @@ local levee2D =
       type = "vanGenuchten",
       thetaS = 0.37, thetaR = 0.043,
       alpha = 0.087/rhog, n = 1.58,
-      Ksat = 0.5},
+      Ksat = 2.76},
     
     { uid = "@Clay",
       type = "vanGenuchten",
@@ -127,10 +127,10 @@ local levee2D =
     start 	= 0.0,				      -- [s]  start time point
     stop	= tstop,			        -- [s]  end time point
     max_time_steps = 10000,		  -- [1]	maximum number of time steps
-    dt		= 43200,		          -- [s]  initial time step
+    dt		= 1000,		          -- [s]  initial time step
     dtmin	= ARGS.dt,	          -- [s]  minimal time step
-    dtmax	= tstop/100,	            -- [s]  maximal time step
-    dtred	= 0.5,			          -- [1]  reduction factor for time step
+    dtmax	= tstop/4,	            -- [s]  maximal time step
+    dtred	= 0.1,			          -- [1]  reduction factor for time step
     tol 	= 1e-2,
   },
 
@@ -140,10 +140,6 @@ local levee2D =
   {
     file = "./", -- must be a folder!
     data = {"c", "p", "rho", "mu", "kr", "s", "q", "ff", "tf", "af", "df", "pc", "k"},
-    -- scaling factor for correct time units.
-    -- 1 means all units are given in seconds
-    -- if units are scaled to days, then the scaling factor should be 86400
-    scale = 1
   },
 }
 
@@ -151,7 +147,7 @@ local levee2D =
 function Levee2D_RisingFlood_p(x, y, t, si)
   local pegel = math.min(t/Levee2D_tRise, 1.0)*5.85
   if (y <= pegel) then
-    return true, (pegel - y) * rhog
+    return true, (pegel - y) * 1025.0 * levee2D_g * -1.0
   end
   return false, 0
 end
@@ -166,7 +162,7 @@ end
 
 -- initial pressure function
 function Levee2D_HydrostaticHead(x, y, t, si)
-  return (6-y)*rhog
+  return -y*rhog
 end
 
 

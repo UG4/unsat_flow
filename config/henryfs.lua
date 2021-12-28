@@ -4,8 +4,8 @@
 params =
 {
 --	physical parameters
-	fs_depth = util.GetParamNumber("-fsDepth", 0.5), -- depth of the free surface at the right boundary
-	recharge = util.GetParamNumber("-recharge", 0.0000165), -- "rain"
+	fs_depth = util.GetParamNumber("-fsDepth", 0.25), -- depth of the free surface at the right boundary
+	recharge = util.GetParamNumber("-recharge", 7.64e-5), -- "rain"
 }
 
 -- additional constants for vanGenuchten
@@ -31,7 +31,7 @@ local henry =
     { uid = "@Sand",
       type = "vanGenuchten",
       thetaS = 0.37, thetaR = 0.043,
-      alpha = 0.087/rhog, n = 1.58,
+      alpha = 2.5/rhog, n = 1.58,
       Ksat = 1}
   },
 
@@ -76,16 +76,16 @@ local henry =
   boundary =
   {
     -- Sea
-    { cmp = "c", type = "dirichlet", bnd = "Sea", value = 1.0 },
-    { cmp = "p", type = "dirichlet", bnd = "Sea", value = "HydroPressure_c" },
+    { cmp = "c", type = "dirichlet", bnd = "Sea", value = "SeaConc" },
+    { cmp = "p", type = "dirichlet", bnd = "Sea", value = "HydroPressure_bnd" },
 
     -- Land
-    { cmp = "c", type = "dirichlet", bnd = "Inflow", value = 0.0 },
-    { cmp = "p", type = "flux", bnd = "Inflow", inner = "Medium", value = -7.64e-5 }
+    -- { cmp = "c", type = "dirichlet", bnd = "Inflow", value = 0.0 },
+    -- { cmp = "p", type = "flux", bnd = "Inflow", inner = "Medium", value = -7.64e-5 }
 
     -- Top
-    --{ cmp = "p", type = "flux", bnd = "Top", inner="Medium", value=params.recharge},
-    --{ cmp = "c", type = "dirichlet", bnd = "Top", value = 0.0 },
+    { cmp = "p", type = "flux", bnd = "Top", inner="Medium", value = "RechargeTop"},
+    { cmp = "c", type = "dirichlet", bnd = "Top", value = 0.0 },
 
   },
 
@@ -137,10 +137,6 @@ local henry =
   {
     file = "./", -- must be a folder!
     data = {"c", "p", "rho", "mu", "kr", "s", "q", "ff", "tf", "af", "df", "pc", "k"},
-    -- scaling factor for correct time units.
-    -- 1 means all units are given in seconds
-    -- if units are scaled to days, then the scaling factor should be 86400
-    scale = 1
   },
 }
 
@@ -153,6 +149,15 @@ function HydroPressure_bnd(x, y, t, si)
   end
 end
 
+function SeaConc(x, y, t, si)
+  pp = HydroPressure_c(x, y)
+  if pp < 0 then
+    return false, 0
+  else
+    return true, 1
+  end
+end
+
 function HydroPressure_c(x, y)
   return henry2D_g * 1025 * (y + params.fs_depth)
 end
@@ -160,6 +165,8 @@ end
 function HydroPressure(x, y)
   return henry2D_g * henry2D_rho * (y + params.fs_depth)
 end
+
+
 
 function RechargeTop(x, y, t, si)
   return -(2.0-x)*params.recharge

@@ -4,7 +4,7 @@ Trench2D_rho = 998.23
 Trench2D_g = -9.81 -- must be negative!
 rhog = (-1.0)*Trench2D_rho*Trench2D_g
 numdays = 100
-tstop = numdays * 86400 -- 500 days
+tstop = numdays * 86400 -- 100 days
 
 local trench2D =
 {
@@ -133,10 +133,6 @@ local trench2D =
   {
     file = "./", -- must be a folder!
     data = {"c", "p", "rho", "mu", "kr", "s", "q", "ff", "tf", "af", "df", "pc", "k"},
-    -- scaling factor for correct time units.
-    -- 1 means all units are given in seconds
-    -- if units are scaled to days, then the scaling factor should be 86400
-    scale = 1
   }
 
 }

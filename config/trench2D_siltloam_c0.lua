@@ -3,7 +3,7 @@
 Trench2D_rho = 998.23
 Trench2D_g = -9.81 -- must be negative!
 rhog = (-1.0)*Trench2D_rho*Trench2D_g
-numdays = 900
+numdays = 15
 tstop = numdays * 86400 -- 500 days
 
 local trench2D =
@@ -97,10 +97,10 @@ local trench2D =
     control	= "limex",
     start 	= 0.0,				      -- [s]  start time point
     stop	= tstop,			        -- [s]  end time point
-    max_time_steps = 1000,		  -- [1]	maximum number of time steps
+    max_time_steps = 200,		  -- [1]	maximum number of time steps
     dt		= 43200,		          -- [s]  initial time step
     dtmin	= ARGS.dt,	          -- [s]  minimal time step
-    dtmax	= tstop/100,	            -- [s]  maximal time step
+    dtmax	= tstop/5,	            -- [s]  maximal time step
     dtred	= 0.5,			          -- [1]  reduction factor for time step
     tol 	= 1e-2,
   },
@@ -109,10 +109,6 @@ local trench2D =
   {
     file = "./", -- must be a folder!
     data = {"c", "p", "rho", "mu", "kr", "s", "q", "ff", "tf", "af", "df", "pc", "k"},
-    -- scaling factor for correct time units.
-    -- 1 means all units are given in seconds
-    -- if units are scaled to days, then the scaling factor should be 86400
-    scale = 1
   }
 
 }
