@@ -5,7 +5,7 @@ params =
 {
 --	physical parameters
 	fs_depth = util.GetParamNumber("-fsDepth", 0.25), -- depth of the free surface at the right boundary
-	recharge = util.GetParamNumber("-recharge", 7.64e-5), -- "rain"
+	recharge = util.GetParamNumber("-recharge", 7.64e-5/2), -- "rain"
 }
 
 -- additional constants for vanGenuchten
@@ -117,7 +117,7 @@ local henry =
         {cmp ="p"},
         {cmp="c"}
         }
-      } 
+      }
   },
 
   time =
