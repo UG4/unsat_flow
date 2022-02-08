@@ -21,19 +21,19 @@ local levee2D =
     { uid = "@SiltLoam",
       type = "vanGenuchten",
       thetaS = 0.396, thetaR = 0.131,
-      alpha = 0.423/rhog, n = 2.06,
+      alpha = 0.423, n = 2.06,
       Ksat = 0.0496},
 
     { uid = "@Sand",
       type = "vanGenuchten",
       thetaS = 0.37, thetaR = 0.043,
-      alpha = 0.087/rhog, n = 1.58,
+      alpha = 0.087, n = 1.58,
       Ksat = 2.76},
 
     { uid = "@Clay",
       type = "vanGenuchten",
       thetaS = 0.446, thetaR = 0.0,
-      alpha = 0.152/rhog, n = 1.17,
+      alpha = 0.152, n = 1.17,
       Ksat = 8.2e-4},
   },
 

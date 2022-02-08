@@ -22,7 +22,7 @@ local trench2D =
     { uid = "@SiltLoam",
       type = "vanGenuchten",
       thetaS = 0.396, thetaR = 0.131,
-      alpha = 0.423/rhog, n = 2.06,
+      alpha = 0.423, n = 2.06,
       Ksat = 0.0496},
   },
 

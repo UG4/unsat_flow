@@ -31,7 +31,7 @@ local henry =
     { uid = "@Sand",
       type = "vanGenuchten",
       thetaS = 0.37, thetaR = 0.043,
-      alpha = 0.087/rhog, n = 1.58,
+      alpha = 0.087, n = 1.58,
       Ksat = 1}
   },
 
@@ -117,7 +117,7 @@ local henry =
         {cmp ="p"},
         {cmp="c"}
         }
-      } 
+      }
   },
 
   time =

@@ -21,13 +21,13 @@ local levee2D =
     { uid = "@Clay",
       type = "vanGenuchten",
       thetaS = 0.446, thetaR = 0.0,
-      alpha = 0.152/rhog, n = 1.17,
+      alpha = 0.152, n = 1.17,
       Ksat = 0.00432},
 
     { uid = "@Sand",
       type = "vanGenuchten",
       thetaS = 0.37, thetaR = 0.043,
-      alpha = 0.087/rhog, n = 1.58,
+      alpha = 0.087, n = 1.58,
       Ksat = 0.02592},
   },
 
@@ -144,7 +144,7 @@ function Levee2D_RisingFlood_p(x, y, t, si)
     end
     return false, 0
   end
-  
+
 function Levee2D_RisingFlood_c(x, y, t, si)
     local pegel = math.min(t/Levee2D_tRise, 1.0)*5.85
     if (y <= pegel) then
@@ -152,12 +152,11 @@ function Levee2D_RisingFlood_c(x, y, t, si)
     end
     return false, 0.0
 end
-  
+
   -- initial pressure function
 function Levee2D_HydrostaticHead(x, y, t, si)
     return -y*rhog
 end
-  
-  
+
+
 return levee2D
-  

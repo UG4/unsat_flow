@@ -31,7 +31,7 @@ local henry =
     { uid = "@Sand",
       type = "vanGenuchten",
       thetaS = 0.37, thetaR = 0.043,
-      alpha = 2.5/rhog, n = 1.58,
+      alpha = 2.5, n = 1.58,
       Ksat = 1}
   },
 

@@ -93,7 +93,7 @@ function ProblemDisc:CreateElemDisc(subdom, medium)
             Ksat = param.Ksat
         end
     end
-    
+
     local r_scale = -86400 -- scaling for time unit in K_sat
     local permeability = ScaleAddLinkerMatrix()
     -- needs scaling depending on hydraulic conductivities scale in the Richardsplugin
@@ -198,7 +198,7 @@ function ProblemDisc:CreateElemDisc(subdom, medium)
     self.CompositeAdvectiveFlux:add(si, advFlux)
     self.CompositeDiffusiveFlux:add(si, difFlux)
 
-    
+
     return elemDisc
 end
 
@@ -315,6 +315,7 @@ function ProblemDisc:CreateModelMap(paramDesc)
     local modelMap = {}
     for i, medium in ipairs(paramDesc) do
         if medium.type == "vanGenuchten" then
+            medium.alpha= medium.alpha / (-1.0 * self.problem.flow.gravity * self.problem.flow.density.min)
             modelMap[medium.uid] = CreateVanGenuchtenModel(json.encode(medium))
         elseif medium.type == "const" then
             modelMap[medium.uid] = medium.value
@@ -378,7 +379,7 @@ function ProblemDisc:density(densDesc)
 
         density = LuaUserFunctionNumber("DensityFct", 1);
         density:set_deriv(0, "dwDensityFct");
-    
+
     elseif self.problem.flow.density.type == "const" then
         density = self.problem.flow.density.min
     end
