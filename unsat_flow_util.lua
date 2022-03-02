@@ -82,6 +82,8 @@ function ProblemDisc:CreateElemDisc(subdom, medium)
     local conductivity = ProblemDisc:conductivity(medium.conductivity.value) -- k(S)
     local saturation = ProblemDisc:saturation(medium.saturation.value) -- S
 
+    print(conductivity)
+
     -- hydraulic conductivity in saturated medium is given by darcys law
     -- k_f = K*rho*g / mu
     -- for unsaturated flow:
@@ -198,7 +200,6 @@ function ProblemDisc:CreateElemDisc(subdom, medium)
     self.CompositeAdvectiveFlux:add(si, advFlux)
     self.CompositeDiffusiveFlux:add(si, difFlux)
 
-
     return elemDisc
 end
 
@@ -254,6 +255,34 @@ function ProblemDisc:CreateDomainDisc(approxSpace)
     if (dirichletBnd) then  self.domainDisc:add(dirichletBnd) end
     if (neumannBnd["p"]) then  self.domainDisc:add(neumannBnd["p"]) end
     if (neumannBnd["c"]) then  self.domainDisc:add(neumannBnd["c"]) end
+
+    -- Adding Dirac Sources
+    if self.problem.sources ~= nil then
+        for i, v in ipairs(self.problem.sources) do
+
+            local source = DiracSourceDisc(v.cmp, v.subset)
+
+            local location = nil
+            if self.problem.domain.dim == 2 and v.x and v.y then
+                location = Vec2d(v.x, v.y)
+            elseif self.problem.domain.dim == 3 and v.x and v.y and v.z then
+                location = Vec3d(v.x, v.y, v.z)
+            else
+                print("source coordinates not given")
+            end
+
+            if v.value then source:add_source(v.value, location)
+            elseif v.transport then source:add_transport_sink(v.transport, location)
+            end
+            self.domainDisc:add(source)
+
+            if v.value ~= nil then
+                print("Added DiracPointSource with value " .. v.value .. " on subset " .. v.subset)
+            else
+                print("Added DiracPointSource with transport value of" .. v.transport .. "on subset " .. v.subset)
+            end
+        end
+    end
 
     print("Created Domain Discretisation")
     return self.domainDisc
@@ -315,6 +344,7 @@ function ProblemDisc:CreateModelMap(paramDesc)
     local modelMap = {}
     for i, medium in ipairs(paramDesc) do
         if medium.type == "vanGenuchten" then
+            print(self.problem.flow.density)
             medium.alpha= medium.alpha / (-1.0 * self.problem.flow.gravity * self.problem.flow.density.min)
             modelMap[medium.uid] = CreateVanGenuchtenModel(json.encode(medium))
         elseif medium.type == "const" then
