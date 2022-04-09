@@ -164,7 +164,12 @@ function ProblemDisc:CreateElemDisc(subdom, medium)
     elemDisc["transport"]:set_mass_scale(storage)
     elemDisc["transport"]:set_velocity(fluidFlux)
     elemDisc["transport"]:set_diffusion(diffusion)
-    elemDisc["transport"]:set_upwind(FullUpwind())
+    -- set upwind scheme to FullUpwind, if no upwind scheme is defined
+    if self.problem.flow.upwind == "full" or self.problem.flow.upwind == nil then
+        elemDisc["transport"]:set_upwind(FullUpwind())
+    elseif self.problem.flow.upwind == "partial" then
+        elemDisc["transport"]:set_upwind(PartialUpwind())
+    end
 
     -- capillary pressure: air pressure is set to 0
     -- => p_c = - p_w
@@ -271,8 +276,9 @@ function ProblemDisc:CreateDomainDisc(approxSpace)
                 print("source coordinates not given")
             end
 
-            if v.value then source:add_source(v.value, location)
-            elseif v.transport then source:add_transport_sink(v.transport, location)
+            if v.value and type(v.value) ~= "string" then source:add_source(v.value, location)
+            elseif v.value then source:add_source(v.value)
+            elseif v.transport then source:add_transport_sink(v.transport)
             end
             self.domainDisc:add(source)
 
