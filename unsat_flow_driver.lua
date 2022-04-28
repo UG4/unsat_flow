@@ -116,6 +116,7 @@ else
     limex:set_increase_factor(2.0)
     limex:enable_matrix_cache()
     --limex:disable_matrix_cache()
+    limex:set_conservative(true)
 
   -- Debugging LIMEX.
     local dbgWriter = GridFunctionDebugWriter(approxSpace)
@@ -123,7 +124,7 @@ else
         --limex:set_debug(dbgWriter)
         --limex:set_debug_for_timestepper(dbgWriter)
         dbgWriter:set_vtk_output(true)
-		dbgWriter:set_conn_viewer_output(true) 
+		dbgWriter:set_conn_viewer_output(true)
         limexNLSolver[1]:set_debug(dbgWriter)
     end
 

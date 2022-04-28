@@ -14,7 +14,31 @@ params.freshWaterDensity = 996.9
 params.saltWaterDensity = 1020.9
 params.gravity = -9.981
 
+params.pumping_rate = 1 / (24 * 60 * 60) / 0.05 -- 1 [m3/d] spread along the entire width
+params.pumping_time = 135 -- [s], after that the pumping is switched off
+
+-- The fresh water recharge through the right boundary:
+-- 0.086 [m3/d] (cf. the paper, p. 3, line 18 from below), converted to [kg/s] and
+-- spread along the entire height (so that the integral provides the same mass)
+params.freshflux = 0.086 / (24 * 60 * 60) * params.freshWaterDensity / 0.2 -- [kg/s]
+
 rhog = (-1.0)*params.freshWaterDensity*params.gravity
+
+function HydroPressure(x, y, t, si)
+	return params.gravity * params.saltWaterDensity * (y - 0.2)
+end
+
+function HydroPressureInitial(x, y, t, si)
+  return params.gravity * params.freshWaterDensity * (y - 0.2)
+end
+
+function pumping_sink(x, y, t, si)
+	if t < params.pumping_time then
+		return - params.pumping_rate
+	end
+	return 0
+end
+
 
 local henry =
 {
@@ -38,8 +62,6 @@ local henry =
 
   flow =
   {
-    boussinesq = false,
-
     gravity = params.gravity,      -- [ m s^{-2}], must be negative!
     density =
     { type = "linear",         -- density function ["linear", "exp", "ideal"]
@@ -51,8 +73,9 @@ local henry =
     { type = "const",          -- viscosity function ["const", "real"]
       mu0 = 0.00089                  -- [ Pa s ]
     },
-    diffusion   = 10e-9, -- [ m^2/s ]
-    upwind = "partial"
+    diffusion   = 1e-9, -- [ m^2/s ]
+    upwind = "partial",
+    boussinesq = false
   },
    medium =
    {
@@ -71,8 +94,8 @@ local henry =
 
   sources =
   {
-    {cmp = "p", value = "Pumping", subset = "pump", x = 0.6, y = 0.05},
-    {cmp = "c", transport = "Pumping", subset = "pump", x = 0.6, y = 0.05},
+    {cmp = "p", value = "pumping_sink", subset = "pump", x = 0.6, y = 0.05},
+    {cmp = "c", transport = "pumping_sink", subset = "pump", x = 0.6, y = 0.05},
   },
 
   initial =
@@ -88,7 +111,7 @@ local henry =
     { cmp = "p", type = "dirichlet", bnd = "salt", value = "HydroPressure" },
 
     -- Land
-    { cmp = "p", type = "flux", bnd = "fresh", inner = "inner", value = -1.11e-5 }, -- approx. 0.96 [m3/d]
+    { cmp = "p", type = "flux", bnd = "fresh", inner = "inner", value = params.freshflux }, -- approx. 0.96 [m3/d]
     { cmp = "c", type = "dirichlet", bnd = "fresh", value = 0.0 }
   },
 
@@ -113,7 +136,7 @@ local henry =
       convCheck =
       { type    = "composite",
         iterations  = 30,   -- number of iterations
-        absolute  = 0.5e-8, -- absolut value of defact to be reached; usually 1e-8 - 1e-10 (must be stricter / less than in newton section)
+        absolute  = 0.5e-12, -- absolut value of defact to be reached; usually 1e-8 - 1e-10 (must be stricter / less than in newton section)
         reduction = 1e-7,   -- reduction factor of defect to be reached; usually 1e-7 - 1e-8 (must be stricter / less than in newton section)
         verbose   = true ,   -- print convergence rates if true
         sub ={
@@ -129,8 +152,8 @@ local henry =
     start 	= 0.0,				      -- [s]  start time point
     stop	= tstop,			        -- [s]  end time point
     max_time_steps = 1000,		  -- [1]	maximum number of time steps
-    dt		= 0.2,		          -- [s]  initial time step
-    dtmin	= ARGS.dt,	          -- [s]  minimal time step
+    dt		= 0.0002,		          -- [s]  initial time step
+    dtmin	= ARGS.dt/100,	          -- [s]  minimal time step
     dtmax	= tstop/10,	            -- [s]  maximal time step
     dtred	= 0.5,			          -- [1]  reduction factor for time step
     tol 	= 1e-2,
@@ -143,23 +166,5 @@ local henry =
   },
 }
 
-function HydroPressure(x,y)
-  return params.gravity * params.saltWaterDensity * (y - 0.12) end
-
-function HydroPressureInitial(x,y)
-  return params.gravity * params.saltWaterDensity * (y - 0.2) end
-
-
-function Pumping(x, y, t, si)
-  t_phase1 = 5000 -- first phase, 5000s
-  t_phase2 = 135  -- second phase, 135s
-  t_phase3 = 5000 -- third phase, 5000s
-  if t < t_phase1 then
-    return 0
-  elseif t > t_phase1 and t < (t_phase1 + t_phase2 + t_phase3) then
-    return -1.157e-5 -- 1 m/d
-  end
-  return 0
-end
 
 return henry
