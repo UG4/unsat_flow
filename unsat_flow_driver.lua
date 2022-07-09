@@ -31,7 +31,6 @@ local dom = util.CreateAndDistributeDomain(problem.domain.grid, ARGS.numRefs, AR
 -- SaveGridHierarchyTransformed(dom:grid(), dom:subset_handler(), "refined.ugx", 0.1)
 
 local disc = ProblemDisc:new(problem, dom)
-print(dom:subset_handler())
 
 -- create approximation space.
 local approxSpace = disc:CreateApproxSpace()
@@ -130,7 +129,12 @@ else
     end
 
     -- Time step observer.
-    local vtkobserver = VTKOutputObserver(problem.output.file..ARGS.problemID..".vtk", disc.vtk)
+    if problem.output.filename ~= nil then
+        local filename = problem.output.filename
+    else
+        local filename = ARGS.problemID
+    end
+    local vtkobserver = VTKOutputObserver(problem.output.file..filename..".vtk", disc.vtk)
     limex:attach_observer(vtkobserver)
 
     -- post process for saving time step size
