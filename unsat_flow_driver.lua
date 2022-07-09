@@ -129,10 +129,11 @@ else
     end
 
     -- Time step observer.
+    local filename = nil
     if problem.output.filename ~= nil then
-        local filename = problem.output.filename
+        filename = problem.output.filename
     else
-        local filename = ARGS.problemID
+        filename = ARGS.problemID
     end
     local vtkobserver = VTKOutputObserver(problem.output.file..filename..".vtk", disc.vtk)
     limex:attach_observer(vtkobserver)
