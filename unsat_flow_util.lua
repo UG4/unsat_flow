@@ -82,8 +82,6 @@ function ProblemDisc:CreateElemDisc(subdom, medium)
     local conductivity = ProblemDisc:conductivity(medium.conductivity.value) -- k(S)
     local saturation = ProblemDisc:saturation(medium.saturation.value) -- S
 
-    print(conductivity)
-
     -- hydraulic conductivity in saturated medium is given by darcys law
     -- k_f = K*rho*g / mu
     -- for unsaturated flow:
@@ -204,6 +202,7 @@ function ProblemDisc:CreateElemDisc(subdom, medium)
     self.CompositeTransportFlux:add(si, (advFlux - difFlux))
     self.CompositeAdvectiveFlux:add(si, advFlux)
     self.CompositeDiffusiveFlux:add(si, difFlux)
+    self.CompositeVoluFrac:add(si, volufrac)
 
     return elemDisc
 end
@@ -224,6 +223,7 @@ function ProblemDisc:CreateDomainDisc(approxSpace)
     self.CompositeTransportFlux = CompositeUserVector(false)
     self.CompositeAdvectiveFlux = CompositeUserVector(false)
     self.CompositeDiffusiveFlux = CompositeUserVector(false)
+    self.CompositeVoluFrac = CompositeUserNumber(false)
 
     for i,medium in ipairs(self.problem.medium) do -- for all media
         local elemDisc = nil
@@ -300,46 +300,50 @@ function ProblemDisc:CreateVTKOutput()
     -- for future reference; util.Balance()
     for i, v in ipairs(self.problem.output.data) do
         -- concentration and pressure
-        if v == "p" then
+        if v == "p" or v == "all" then
            self.vtk:select_nodal(GridFunctionNumberData(self.u, v), v)
         -- concentration gradient
-        elseif v == "gradp" then
+        elseif v == "gradp" or v == "all" then
             self.vtk:select_element(GridFunctionGradientData(self.u, "p"), v)
         -- concentration
-        elseif v == "c" then
+        elseif v == "c" or v == "all" then
             self.vtk:select_nodal(GridFunctionNumberData(self.u, v), v)
         -- concentration gradient
-        elseif v == "gradc" then
+        elseif v == "gradc" or v == "all" then
             self.vtk:select_element(GridFunctionGradientData(self.u, "c"), v)
         -- density
-        elseif v == "rho" and self.problem.flow.density.type ~= "const" then
+        elseif (v == "rho" or v == "all") and self.problem.flow.density.type ~= "const" then
             self.vtk:select_element(self.rho, v)
         -- viscosity
-        elseif v == "mu" and self.problem.flow.viscosity.type ~= "const" then
+        elseif (v == "mu" or v == "all") and self.problem.flow.viscosity.type ~= "const" then
             self.vtk:select_element(self.mu, v)
         -- relative conductivity
-        elseif v == "kr" then
+        elseif v == "kr" or v == "all" then
             self.vtk:select_element(self.CompositeConductivity, v)
         -- saturation
-        elseif v == "s" then
+        elseif v == "s" or v == "all" then
             self.vtk:select_element(self.CompositeSaturation, v)
         -- darcy velocity
-        elseif v == "q" then
+        elseif v == "q" or v == "all" then
             self.vtk:select_element(self.CompositeDarcyVelocity, v)
-        -- transport equation flux
-        elseif v == "ff" then
+        -- flow equation flux
+        elseif v == "ff" or v == "all" then
             self.vtk:select_element(self.CompositeFluidFlux, v)
-        elseif v == "tf" then
+        -- transport equation flux
+        elseif v == "tf" or v == "all" then
             self.vtk:select_element(self.CompositeTransportFlux, v)
         -- advective flux
-        elseif v == "af" then
+        elseif v == "af" or v == "all" then
             self.vtk:select_element(self.CompositeAdvectiveFlux, v)
         -- diffusive flux
-        elseif v == "df" then
+        elseif v == "df" or v == "all" then
             self.vtk:select_element(self.CompositeDiffusiveFlux, v)
         -- capillary pressure
-        elseif v == "pc" then
+        elseif v == "pc" or v == "all" then
             self.vtk:select(self.CompositeCapillary, v)
+        -- volumetric fraction
+        elseif v == "vf" or v == "all" then
+            self.vtk:select(self.CompositeVoluFrac, v)
         end
     end
 
@@ -350,7 +354,6 @@ function ProblemDisc:CreateModelMap(paramDesc)
     local modelMap = {}
     for i, medium in ipairs(paramDesc) do
         if medium.type == "vanGenuchten" then
-            print(self.problem.flow.density)
             medium.alpha= medium.alpha / (-1.0 * self.problem.flow.gravity * self.problem.flow.density.min)
             modelMap[medium.uid] = CreateVanGenuchtenModel(json.encode(medium))
         elseif medium.type == "const" then

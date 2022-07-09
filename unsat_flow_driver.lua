@@ -31,6 +31,7 @@ local dom = util.CreateAndDistributeDomain(problem.domain.grid, ARGS.numRefs, AR
 -- SaveGridHierarchyTransformed(dom:grid(), dom:subset_handler(), "refined.ugx", 0.1)
 
 local disc = ProblemDisc:new(problem, dom)
+print(dom:subset_handler())
 
 -- create approximation space.
 local approxSpace = disc:CreateApproxSpace()
@@ -135,6 +136,10 @@ else
     -- post process for saving time step size
     local luaObserver = LuaCallbackObserver()
     function luaPostProcess(step, time, currdt)
+        print("")
+        print("Integral over salt mass fraction: "..Integral(disc.u, "c"))
+        print("")
+        print("Integral over fluid phase volume: "..Integral(disc.CompositeSaturation, disc.u))
         print("")
         print(">>>> TimeStep: "..step..","..time..","..currdt.." <<<<")
         print("")
