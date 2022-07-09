@@ -5,11 +5,10 @@
 # Model
 The Model consists of two coupled PDEs:
 
-$\frac{\partial}{\partial t} (\phi S_w \rho_w) + \nabla \rho_w \bvec{q} = \rho_w \Gamma$
-<br><img src="https://render.githubusercontent.com/render/math?math=\frac{\partial}{\partial t} (\phi S_w \rho_w) %2B \nabla \rho_w \vec{q} = \rho_w \Gamma"> </br>
+$\frac{\partial}{\partial t} (\phi S_w \rho_w) + \nabla \rho_w \vec{q} = \rho_w \Gamma$
 
-$\frac{\partial}{\partial t}(\phi S_w \rho_w \omega) + \nabla  (\bvec{q} \rho_w \omega - \phi S_w \rho_w D \nabla \omega) = \phi S_w \rho_w \Gamma $
-<br><img src="https://render.githubusercontent.com/render/math?math=\frac{\partial}{\partial t}(\phi S_w \rho_w \omega) %2B \nabla  (\vec{q} \rho_w \omega - \phi S_w \rho_w D \nabla \omega) = \phi S_w \rho_w \Gamma "> </br>
+$\frac{\partial}{\partial t}(\phi S_w \rho_w \omega) + \nabla  (\vec{q} \rho_w \omega - \phi S_w \rho_w D \nabla \omega) = \phi S_w \rho_w \Gamma $
+
 
 The first equation models groundwater flow in a porous medium, the second equation models advection and diffusion of a contaminant.
 
