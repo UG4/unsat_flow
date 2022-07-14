@@ -203,6 +203,7 @@ function ProblemDisc:CreateElemDisc(subdom, medium)
     self.CompositeAdvectiveFlux:add(si, advFlux)
     self.CompositeDiffusiveFlux:add(si, difFlux)
     self.CompositeVoluFrac:add(si, volufrac)
+    self.CompositeSaltMass:add(si, density*elemDisc["transport"]:value())
 
     return elemDisc
 end
@@ -224,6 +225,7 @@ function ProblemDisc:CreateDomainDisc(approxSpace)
     self.CompositeAdvectiveFlux = CompositeUserVector(false)
     self.CompositeDiffusiveFlux = CompositeUserVector(false)
     self.CompositeVoluFrac = CompositeUserNumber(false)
+    self.CompositeSaltMass = CompositeUserNumber(false)
 
     for i,medium in ipairs(self.problem.medium) do -- for all media
         local elemDisc = nil

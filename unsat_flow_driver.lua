@@ -142,7 +142,7 @@ else
     local luaObserver = LuaCallbackObserver()
     function luaPostProcess(step, time, currdt)
         print("")
-        print("Integral over salt mass fraction: "..Integral(disc.u, "c"))
+        print("Integral over salt mass fraction: "..Integral(disc.CompositeSaltMass, disc.u))
         print("")
         print("Integral over fluid phase volume: "..Integral(disc.CompositeSaturation, disc.u))
         print("")
