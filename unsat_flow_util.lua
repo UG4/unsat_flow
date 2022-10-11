@@ -203,7 +203,7 @@ function ProblemDisc:CreateElemDisc(subdom, medium)
     self.CompositeAdvectiveFlux:add(si, advFlux)
     self.CompositeDiffusiveFlux:add(si, difFlux)
     self.CompositeVoluFrac:add(si, volufrac)
-    self.CompositeSaltMass:add(si, density*elemDisc["transport"]:value())
+    self.CompositeSaltMass:add(si, volufrac*density*elemDisc["transport"]:value())
 
     return elemDisc
 end
