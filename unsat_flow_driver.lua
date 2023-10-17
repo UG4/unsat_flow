@@ -114,8 +114,8 @@ else
   
   local concErrorEst = CompositeGridFunctionEstimator()
   -- concErrorEst:add(weightedMetricSpace)
-  concErrorEst:add(spaceP)
- concErrorEst:add(spaceC)
+  -- concErrorEst:add(spaceP)
+  concErrorEst:add(spaceC)
 
   limex:add_error_estimator(concErrorEst)
   limex:set_tolerance(1e-3)

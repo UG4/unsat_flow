@@ -133,7 +133,7 @@ function ProblemDisc:CreateElemDisc(subdom, medium)
 
 
 	elemDisc["flow"]:set_mass_scale(0.0)
-  elemDisc["flow"]:set_diffusion(0.0)
+    elemDisc["flow"]:set_diffusion(0.0)
 
 	-----------------------------------------
 	-- Equation [2]
@@ -143,11 +143,11 @@ function ProblemDisc:CreateElemDisc(subdom, medium)
 	-- 		+ \nabla \cdot [\rho_w \omega \vec{v}_w - \rho_w D \nabla \omega] 
 	--			= \rho_w \omega \Gamma_w$
 
-  elemDisc["transport"]:set_mass(0.0)
-  elemDisc["transport"]:set_mass_scale(storage)
-	elemDisc["transport"]:set_velocity(fluidFlux)
-  elemDisc["transport"]:set_diffusion(diffusion)
-  elemDisc["transport"]:set_upwind(myUpwind)
+    elemDisc["transport"]:set_mass(0.0)
+    elemDisc["transport"]:set_mass_scale(storage)
+    elemDisc["transport"]:set_velocity(fluidFlux)
+    elemDisc["transport"]:set_diffusion(diffusion)
+    elemDisc["transport"]:set_upwind(myUpwind)
 
 
     -- setting inputs
@@ -223,6 +223,36 @@ function ProblemDisc:CreateDomainDisc(approxSpace)
             self.domainDisc:add(elemDisc["transport"])
         end
     end
+
+    -- Sources and sinks
+    for index,mySource in ipairs(self.problem.sources) do -- for all sources
+        local elemDisc = DiracSourceDisc(mySource.cmp, mySource.subset)
+      
+        print (mySource)
+        print(mySource.strength)
+
+        local mycoord = Vec2d()
+        mycoord:set_coord(0, mySource.coord[1])
+        mycoord:set_coord(1, mySource.coord[2])
+        elemDisc:add_source(mySource.strength, mycoord)
+      
+        self.domainDisc:add(elemDisc)
+    end
+
+    -- Sinks
+    for index,mySink in ipairs(self.problem.sinks) do -- for all sources
+        local elemDisc = DiracSourceDisc(mySink.cmp, mySink.subset)
+      
+        print (mySink)
+        print(mySink.strength)
+
+        local mycoord = Vec2d()
+        mycoord:set_coord(0, mySink.coord[1])
+        mycoord:set_coord(1, mySink.coord[2])
+        elemDisc:add_transport_sink(mySink.strength)
+      
+        self.domainDisc:add(elemDisc)
+      end
 
     -- Create Boundary Conditions
     local dirichletBnd = nil
