@@ -1,4 +1,4 @@
-# Unsaturated Flow and Transport
+# Flow and Transport in unsaturated media
 
 **UG4-App** implementing an unsaturated density driven flow equation system.
 
