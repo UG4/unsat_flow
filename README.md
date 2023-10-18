@@ -4,6 +4,8 @@
 
 Authors: Niklas Conen, Arne Nägel
 
+https://github.com/Nordegraf/unsat_flow
+
 ## Documentation
 The equations used are: 
 
