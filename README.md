@@ -1,6 +1,6 @@
-# unsat_flow
+# Unsaturated Flow and Transport
 
-**UG4-App** implementing an unsaturated density driven flow equation system
+**UG4-App** implementing an unsaturated density driven flow equation system.
 
 ## Documentation
 The equations used are: </br>
