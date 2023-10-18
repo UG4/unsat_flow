@@ -7,8 +7,6 @@ The equations used are:
 
 $\partial_t (\Phi \rho_w S_w) + \nabla \cdot [\rho_w \vec{v}_w] = \rho_w \Gamma_w$
 
-and 
-
 $\partial_t (\Phi \rho_w S_w \omega) + \nabla \cdot [\rho_w \omega \vec{v}_w - \rho_w D \nabla \omega] = \rho_w \omega \Gamma_w$
 
 
@@ -23,10 +21,11 @@ $\partial_t (\Phi \rho_w S_w \omega) + \nabla \cdot [\rho_w \omega \vec{v}_w - \
 ## Examples
 
 Usage:
+
 ugshell -ex unsat_flow_app/unsat_flow_driver.lua --problem-id "example" --check
 
 ## Dependencies
-This app depends on UG4's ConvectionDiffusion Plugin.
+This app depends on the follwoing UG4 plugins: ConvectionDiffusion, LIMEX.
 
 ## References
 [1] Eckhard Schneid: Hybrid-Gemischte Finite-Elemente-Diskretisierung der Richards-Gleichung, Dissertation, FAU Erlangen, 2000
