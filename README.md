@@ -27,7 +27,7 @@ Usage:
 ugshell -ex unsat_flow_app/unsat_flow_driver.lua --problem-id "example" --check
 
 ## Dependencies
-This app depends on the follwoing UG4 plugins: ConvectionDiffusion, LIMEX.
+This app depends on the following UG4 plugins: ConvectionDiffusion, LIMEX, Richards.
 
 ## References
 [1] Eckhard Schneid: Hybrid-Gemischte Finite-Elemente-Diskretisierung der Richards-Gleichung, Dissertation, FAU Erlangen, 2000
