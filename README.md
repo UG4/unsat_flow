@@ -2,6 +2,8 @@
 
 **UG4-App** implementing an unsaturated density driven flow equation system.
 
+Authors: Niklas Conen, Arne Nägel
+
 ## Documentation
 The equations used are: 
 
