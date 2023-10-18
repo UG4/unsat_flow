@@ -11,8 +11,7 @@ and
 
 $\partial_t (\Phi \rho_w S_w \omega) + \nabla \cdot [\rho_w \omega \vec{v}_w - \rho_w D \nabla \omega] = \rho_w \omega \Gamma_w$
 
-Usage:
-ugshell -ex unsat_flow_app/unsat_flow_driver.lua --problem-id "example" --check
+
 
 ## Possible arguments
 * --problem-id specifies the problems config file, standard: "trench2D"
@@ -23,6 +22,9 @@ ugshell -ex unsat_flow_app/unsat_flow_driver.lua --problem-id "example" --check
 
 ## Examples
 
+Usage:
+ugshell -ex unsat_flow_app/unsat_flow_driver.lua --problem-id "example" --check
+
 ## Dependencies
 This app depends on UG4's ConvectionDiffusion Plugin.
 
@@ -32,3 +34,5 @@ This app depends on UG4's ConvectionDiffusion Plugin.
 [2] K. Johannsen: Numerische Aspekte dichtegetriebener Strömung in porösen Medien, Habilitationsschrift, Universität Heidelberg, 2004
 
 [3] P. Frolkovic: Application of level set method for groundwater flow with moving boundary. Advances in Water Resources 47 (2012) 56–66
+
+[4] N. Conen: Hydrochemische Modellierung des Stickstoffeintrags durch landwirtschaftliche Nutzflächen in Regionen mit Trinkwasserbrunnen. B.Sc. thesis, Universtität Frankfurt, 2022.
