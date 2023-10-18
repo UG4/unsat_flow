@@ -4,8 +4,7 @@
 
 ## Documentation
 The equations used are: </br>
-<img src="https://render.githubusercontent.com/render/math?math=\partial_t (\Phi \rho_w S_w) %2B \nabla \cdot [\rho_w \vec{v}_w] = \rho_w \Gamma_w"> </br>
-<sub>($\partial_t (\Phi \rho_w S_w) + \nabla \cdot [\rho_w \vec{v}_w] = \rho_w \Gamma_w$)</sub> </br>
+$\partial_t (\Phi \rho_w S_w) + \nabla \cdot [\rho_w \vec{v}_w] = \rho_w \Gamma_w$
 and </br>
 <img src="https://render.githubusercontent.com/render/math?math=\partial_t (\Phi \rho_w S_w \omega) %2B \nabla \cdot [\rho_w \omega \vec{v}_w - \rho_w D \nabla \omega] = \rho_w \omega \Gamma_w"> </br>
 <sub>($\partial_t (\Phi \rho_w S_w \omega) + \nabla \cdot [\rho_w \omega \vec{v}_w - \rho_w D \nabla \omega] = \rho_w \omega \Gamma_w$)</sub>
