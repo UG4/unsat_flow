@@ -20,6 +20,9 @@ params =
 params.baseLvl = ARGS.numPreRefs
 
 -- additional constants for vanGenuchten
+rhog = 9.81 * 1000 
+
+-- additional constants for vanGenuchten
 local henry = 
 { 
   -- The domain specific setup
@@ -27,7 +30,6 @@ local henry =
   {
     dim = 2,
     grid = "grids/henry_quad_sink.ugx",
-    --grid = "grids/henry_fract.ugx",
     numRefs = ARGS.numRefs,
     numPreRefs = ARGS.numPreRefs,
   },
@@ -88,13 +90,25 @@ local henry =
   sources =
   {
      -- { cmp = "p", subset = "Sink", coord = {0.5, -0.75}, strength = -Qstrength},
-     { cmp = "p", subset = "Sink", coord = {0.5, -0.75}, strength = LuaUserNumber2d("TimeSink") },
+     { 
+        cmp = "p", subset = "Sink", coord = {0.5, -0.75}, strength = LuaUserNumber2d("TimeSink"), 
+        substances = { 
+          { cmp = "c" }, 
+        },
+     },
   },
 
-  sinks =
+  --[[sinks =
   {
-     { cmp = "c", subset = "Sink", coord = {0.5, -0.75}, strength = LuaUserNumber2d("TimeSink") },
+     { 
+        cmp = "c", subset = "Sink", coord = {0.5, -0.75}, strength = LuaUserNumber2d("TimeSink"),
+        substances = {
+         
+        }
+     },
   },
+  ––]]
+
 
   initial = 
   {

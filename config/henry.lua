@@ -13,7 +13,7 @@ params =
 params.baseLvl = ARGS.numPreRefs
 
 -- additional constants for vanGenuchten
-rhog = 9.81 * 1000 
+rhog =  1000 * 9.81
 
 local henry = 
 { 
