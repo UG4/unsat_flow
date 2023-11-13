@@ -5,10 +5,12 @@ local myPath = ug_get_current_path()
 package.path = package.path..";".. myPath.."/config/?.lua;".. myPath.."/?.lua"
 
 ug_load_script("../scripts/ug_util.lua")
-ug_load_script("/unsat_flow_util.lua")
+ug_load_script("./unsat_flow_util.lua")
 ug_load_script("../scripts/util/solver_util.lua")
 
-util.CheckAndPrintHelp("unsaturated density flow problem");
+util.CheckAndPrintHelp("Unsaturated density flow problem");
+
+
 
 -- Parameters every problem uses
 -- problem specific parameters are in the config file
@@ -21,7 +23,13 @@ ARGS =
   outFileNamePrefix = util.GetParam("-o", "unsat_"),
   dt			          = util.GetParamNumber("-dt", 0.001), -- time step length
   newton            = util.HasParamOption("--newton", false),
+
+  adaptive = util.HasParamOption("--adaptive", false),
 }
+
+if ARGS.adaptive then 
+  ug_load_script("./unsat_flow_adaptive.lua")
+end
 
 local problem = require(ARGS.problemID)
 InitUG(problem.domain.dim, AlgebraType("CPU", 2))
@@ -67,46 +75,132 @@ local TOL = problem.time.tol
 local dtred = problem.time.dtred
 
 --exit()
+local dbgWriter = GridFunctionDebugWriter(approxSpace)
 
 if ARGS.newton then
+  -- Classic time integration.
   util.SolveNonlinearTimeProblem(disc.u, domainDisc, solver, disc.vtk, ARGS.outFileNamePrefix,
   "ImplEuler", 1.0, startTime, endTime, dt, dtMin, dtred)
 else
 
--- LIMEX time-stepping
-
+  -- LIMEX time-stepping
   -- Solvers config.
-  local limexLSolver = {}
-  local limexNLSolver = {}
-
-  local limexConvCheck=ConvCheck(1, 1e-12, 1e-10, true)
-  limexConvCheck:set_supress_unsuccessful(true)
-
-  --local lsolveCheck = ConvCheck(1000, 1e-12, 1e-10)
   local nstages = 2
 
+  local limexLSolver = {}
+  local limexNLSolver = {}
+  local limexDomainDisc = {}
+
+  
+  -- Linear solvers.
   for i=1,nstages do
     limexLSolver[i] = util.solver.CreateSolver(problem.solver.linSolver)
-    --limexLSolver[i]:set_convergence_check(lsolveCheck)
-
-    limexNLSolver[i] = NewtonSolver()
-    limexNLSolver[i]:set_linear_solver(limexLSolver[i])
-    limexNLSolver[i]:set_convergence_check(limexConvCheck)
+    limexDomainDisc[i] = domainDisc
   end
 
-  -- Setup for time integrator
-  local limex = LimexTimeIntegrator(nstages)
-  for i=1,nstages do
-    limex:add_stage(i, limexNLSolver[i], domainDisc )
+  
+  if (not ARGS.adaptive) then
+
+    -- One-step Newton
+    local limexConvCheck=ConvCheck(1, 1e-12, 1e-10, true)
+    limexConvCheck:set_supress_unsuccessful(true)
+
+    for i=1,nstages do
+      limexNLSolver[i] = NewtonSolver()
+      limexNLSolver[i]:set_linear_solver(limexLSolver[i])
+      limexNLSolver[i]:set_convergence_check(limexConvCheck)
+    end
+  
+  else
+    
+    local niConfig = {
+      maxLvl = 8,          -- largest level
+      maxSteps = 3,
+
+      rTOL = 1e-4,          -- spatial tolerance
+      aTOL = 1e-12,         -- spatial tolerance
+      
+     
+      refiner = HangingNodeDomainRefiner(dom),
+      
+      spaceOPT = H1SemiComponentSpace("p", 2, 1.0),
+      markerOPT = GradientIndicator(disc.u, "p"),
+
+      --refinementMarking = MaximumMarking(0.8, 0.0, 0.03),   -- max, min, fraction discarded
+      --refinementMarking = EquilibrationMarkingStrategy(0.9,0.1),
+      refinementMarking = VarianceMarkingEta(1, 0.8, 0.05),
+      --refinementMarking = VarianceMarkingEta(3, 0.8, 0.05),
+      coarseningMarking = APosterioriCoarsening(0.025), --VarianceMarkingEta(0.25, 3, 0.25),-- MaximumMarking(1.0, 0.05, 0.0),
+      
+      -- Debug.
+      useVTK = true,   -- true for debug
+    }
+
+    adaptivityUtil = AdaptivityUtil:new(niConfig, approxSpace, domainDisc, domainDisc)
+    print (adaptivityUtil)
+
+    -- Nested iteration solvers.
+    local niSolverAdaptive = adaptivityUtil:CreateNestedIterationSolver(limexLSolver[1]) 
+    limexNLSolver[1] = niSolverAdaptive;
+    limexDomainDisc[1] = domainDisc
+
+    -- Error for debug.
+    local approxSpace_pc = ApproximationSpace2d(dom, AlgebraType("CPU",1))
+    approxSpace_pc:add_fct("eta_squared", "piecewise-constant");
+    -- approxSpace_pc:add_fct("dummy", "piecewise-constant");
+    
+
+    local dbgEta = GridFunction2dCPU1(approxSpace_pc)
+    dbgEta:set(0.0)
+    niSolverAdaptive:set_debug_elem_error(dbgEta)
+    niSolverAdaptive:set_debug(dbgWriter)
+
+
+    for i=2,nstages do
+      local niSolverNonAdaptive = adaptivityUtil:CreateNestedIterationSolver(limexLSolver[i]) 
+      niSolverNonAdaptive:disable_adaptive_refinement()
+      limexNLSolver[i] = niSolverNonAdaptive
+      limexDomainDisc[i] = domainDisc
+    end
+
+    print(limexDomainDisc)
   end
- 
+
+
+  -- LIMEX Configuration 
+
+  --- descriptor for LIMEX time integrator
+local limexDesc = {
+
+  nstages = nstages, 
+  steps = {1,2,3,4,5,6},
+
+  domainDisc =  limexDomainDisc,
+  nonlinSolver = limexNLSolver,
+  
+  tol = 3e-3,
+  dt = problem.time.dt,
+  dtmin = problem.time.dtmin,
+  dtmax = problem.time.dtmax,
+  
+  rhoSafetyOPT = 0.8,
+  spacesOPT = WeightedH1SemiSpace,
+  --debugOPT = dbgWriter, 
+}
+
+  print("Creating LIMEX integrator...")
+  print(limexDesc)
+  local limex = util.limex.CreateIntegrator(limexDesc)
+  print("...DONE!")
+  
+
   
   local weightedMetricSpace=CompositeSpace()
   --local spaceP = VelEnergyComponentSpace("p", 2, inst.coef.EnergyTensorFlow)
   --local spaceC = L2ComponentSpace("c", 2, inst.coef.Conductivity2)
   local spaceC = L2ComponentSpace("c", 2)
   --local spaceP = VelEnergyComponentSpace("p", 2, ConstUserMatrix(1.0))
-   local spaceP = H1ComponentSpace("c", 2)
+  local spaceP = H1SemiComponentSpace("p", 2)
   
   weightedMetricSpace:add(spaceP)
   weightedMetricSpace:add(spaceC)
@@ -114,8 +208,9 @@ else
   
   local concErrorEst = CompositeGridFunctionEstimator()
   -- concErrorEst:add(weightedMetricSpace)
-  -- concErrorEst:add(spaceP)
-  concErrorEst:add(spaceC)
+  -- concErrorEst:add(spaceC)
+  concErrorEst:add(spaceP)
+  
 
   limex:add_error_estimator(concErrorEst)
   limex:set_tolerance(1e-3)
@@ -123,12 +218,12 @@ else
   limex:set_time_step(problem.time.dt)
   limex:set_dt_min(problem.time.dtmin)
   limex:set_dt_max(problem.time.dtmax)
-  limex:set_increase_factor(1000.0)
+  limex:set_increase_factor(10.0)
   --limex:enable_matrix_cache()
-   limex:disable_matrix_cache()
+  limex:disable_matrix_cache()
 
  -- Debugging LIMEX. 
-  local dbgWriter = GridFunctionDebugWriter(approxSpace)
+  
   if (false) then
     limex:set_debug(dbgWriter)
     limex:set_debug_for_timestepper(dbgWriter)
@@ -139,27 +234,24 @@ else
   local vtkobserver = VTKOutputObserver("LIMEX_"..ARGS.problemID..".vtk", disc.vtk)
   limex:attach_observer(vtkobserver)
   
-  --[[
-    if (problem.step_post_processing) then
+ 
+  if ARGS.adaptive then
+    print(adaptivityUtil)
     local luaobserver = LuaCallbackObserver()
-  
-  local stepClock = CuckooClock()
-  
-  function MyLuaCallback(step, time, currdt)
-    print ("Time per step :"..stepClock:toc()) -- get time for last step 
-    local usol=luaobserver:get_current_solution()
-    myProblem:step_post_processing(usol, step, time)
-    stepClock:tic() -- reset timing
-    return 0;
- end
-  
-  luaobserver:set_callback("MyLuaCallback")
-  limex:attach_observer(luaobserver)
- end
- --]]
+
+    -- work-around (waiting for implementation of SmartPtr forward to lua...)
+    function luaAdaptivePostProcess(step, time, currdt)
+      print("This is step ".. step)
+      adaptivityUtil:GridCoarseningStep(luaobserver:get_current_solution(), 
+          step, time, currdt)
+      return 0;
+    end
+    limex:attach_observer(luaobserver)
+    luaobserver:set_callback("luaAdaptivePostProcess")
+  end
 
 
   -- Solve problem.
-  limexConvCheck:set_minimum_defect(3e-10)
+  -- limexConvCheck:set_minimum_defect(3e-10)
   limex:apply(disc.u, endTime, disc.u, 0.0)
 end
