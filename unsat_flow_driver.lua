@@ -72,61 +72,6 @@ if ARGS.newton then
     util.SolveNonlinearTimeProblem(disc.u, domainDisc, solver, disc.vtk, ARGS.problemID.."_",
     "ImplEuler", 1.0, startTime, endTime, dt, dtMin, dtred)
 else
-    -- LIMEX time-stepping
-
-<<<<<<< HEAD
-    -- Solvers config.
-    local limexLSolver = {}
-    local limexNLSolver = {}
-
-    local limexConvCheck=ConvCheck(1, 1e-12, 1e-10, true)
-    limexConvCheck:set_supress_unsuccessful(true)
-
-    --local lsolveCheck = ConvCheck(1000, 1e-12, 1e-10)
-    local nstages = 2
-
-    for i=1,nstages do
-        limexLSolver[i] = util.solver.CreateSolver(problem.linSolver)
-        print(limexLSolver[i]:config_string())
-        --limexLSolver[i]:set_convergence_check(lsolveCheck)
-
-        limexNLSolver[i] = NewtonSolver()
-        limexNLSolver[i]:set_linear_solver(limexLSolver[i])
-        limexNLSolver[i]:set_convergence_check(limexConvCheck)
-    end
-
-    -- Setup for time integrator
-    local limex = LimexTimeIntegrator(nstages)
-    for i=1,nstages do
-        limex:add_stage(i, limexNLSolver[i], domainDisc )
-    end
-
-    local weightedMetricSpace=CompositeSpace()
-    --local spaceP = VelEnergyComponentSpace("p", 2, inst.coef.EnergyTensorFlow)
-    --local spaceC = L2ComponentSpace("c", 2, inst.coef.Conductivity2)
-    local spaceC = L2ComponentSpace("c", 2)
-    --local spaceP = VelEnergyComponentSpace("p", 2, ConstUserMatrix(1.0))
-    local spaceP = H1ComponentSpace("p", 2)
-
-    weightedMetricSpace:add(spaceP)
-    weightedMetricSpace:add(spaceC)
-
-    local concErrorEst = CompositeGridFunctionEstimator()
-    -- concErrorEst:add(weightedMetricSpace)
-    concErrorEst:add(spaceP)
-    concErrorEst:add(spaceC)
-
-    limex:add_error_estimator(concErrorEst)
-    limex:set_tolerance(TOL)
-    limex:set_stepsize_safety_factor(0.8)
-    limex:set_time_step(dt)
-    limex:set_dt_min(dtMin)
-    limex:set_dt_max(dtMax)
-    limex:set_increase_factor(2.0)
-    limex:enable_matrix_cache()
-    --limex:disable_matrix_cache()
-    limex:set_conservative(true)
-=======
   -- LIMEX time-stepping
   -- Solvers config.
   local nstages = 2
@@ -293,9 +238,9 @@ local limexDesc = {
     limex:attach_observer(luaobserver)
     luaobserver:set_callback("luaAdaptivePostProcess")
   end
->>>>>>> feature-arne
 
-  -- Debugging LIMEX.
+
+   -- Debugging LIMEX.
     local dbgWriter = GridFunctionDebugWriter(approxSpace)
     if (false) then
         --limex:set_debug(dbgWriter)
@@ -305,7 +250,6 @@ local limexDesc = {
         limexNLSolver[1]:set_debug(dbgWriter)
     end
 
-<<<<<<< HEAD
     -- Time step observer.
     local filename = nil
     if problem.output.filename ~= nil then
@@ -339,9 +283,4 @@ local limexDesc = {
 
     print ("CDELTA="..sw:toc())
 end
-=======
-  -- Solve problem.
-  -- limexConvCheck:set_minimum_defect(3e-10)
-  limex:apply(disc.u, endTime, disc.u, 0.0)
-end
->>>>>>> feature-arne
+
