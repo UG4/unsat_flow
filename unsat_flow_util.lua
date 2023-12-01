@@ -52,24 +52,20 @@ end
 function ProblemDisc:CreateElemDisc(subdom, medium)
     -- Creates the elememt discretisation for a given medium
 	local elemDisc = {}
-<<<<<<< HEAD
-    -- flow equation
-	elemDisc["flow"] = ConvectionDiffusion("p", subdom, "fv1")
-	-- transport equation
-    elemDisc["transport"] = ConvectionDiffusion("c", subdom, "fv1")
 
-=======
+	elemDisc["flow"] = ConvectionDiffusion("p", subdom, "fv1") 	-- flow equation
+    	elemDisc["transport"] = ConvectionDiffusion("c", subdom, "fv1")	-- transport equation
    
-    -- Eqns. for flow and transport.
-	elemDisc["flow"] = ConvectionDiffusion(self.cmp[1], subdom, "fv1")      
-    elemDisc["transport"] = ConvectionDiffusion(self.cmp[2], subdom, "fv1") 
+    	-- TODO: @Arne
+    	-- elemDisc["flow"] = ConvectionDiffusion(self.cmp[1], subdom, "fv1")      
+    	-- elemDisc["transport"] = ConvectionDiffusion(self.cmp[2], subdom, "fv1") 
 
-    -- Capillary pressure (auxiliary).
-    local capillary = ScaleAddLinkerNumber()
-    capillary:add(-1.0, elemDisc["flow"]:value())
+    	-- Capillary pressure (auxiliary).
+    	local capillary = ScaleAddLinkerNumber()
+    	capillary:add(-1.0, elemDisc["flow"]:value())
 
-    -- Local viscosity = self.mu
->>>>>>> feature-arne
+    	-- Local viscosity = self.mu
+
     local viscosity = self:viscosity()
     if self.problem.flow.viscosity.type ~= "const" then
         viscosity:set_input(0, elemDisc["transport"]:value())
@@ -77,30 +73,28 @@ function ProblemDisc:CreateElemDisc(subdom, medium)
     self.mu = viscosity
 
     local density = self:density()
-<<<<<<< HEAD
+/* <<<<<<< HEAD */
     if self.problem.flow.density.type ~= "const" then
         density:set_input(0, elemDisc["transport"]:value())
     end
     self.rho = density
 
-    local porosity = nil    -- phi
+    local porosity = medium.porosity    -- phi
     if type(medium.porosity) == "string" then
         for i, param in ipairs(self.problem.parameter) do
             if param.uid == medium.porosity then
                 porosity = param.thetaS     -- the porosity is equal to the saturated water content
             end
         end
-    else
-        porosity = medium.porosity
     end
 
     -- the vanGenuchten model is calculated using the Richards Plugin
     -- capillary pressure: air pressure is set to 0
     -- => p_c = - p_w
-    local capillary = -1.0*elemDisc["flow"]:value()
     local RichardsUserData = RichardsUserDataFactory(capillary)
     conductivity = RichardsUserData:create_conductivity(self.modelMap[medium.conductivity.value])
     saturation = RichardsUserData:create_saturation(self.modelMap[medium.saturation.value])
+/*TODO: @Arne
 =======
     density:set_input(0, elemDisc["transport"]:value())
 
@@ -110,7 +104,7 @@ function ProblemDisc:CreateElemDisc(subdom, medium)
     -- the vanGenuchten model is calculated using the Richards Plugin
     local conductivity = ProblemDisc:conductivity(medium.conductivity.value, capillary)
     local saturation = ProblemDisc:saturation(medium.saturation.value, capillary)
->>>>>>> feature-arne
+>>>>>>> feature-arne */
 
     -- hydraulic conductivity in saturated medium is given by darcys law
     -- k_f = K*rho*g / mu
@@ -140,22 +134,20 @@ function ProblemDisc:CreateElemDisc(subdom, medium)
     DarcyVelocity:set_density(density)
     DarcyVelocity:set_gravity(self.gravity)
 
-<<<<<<< HEAD
-    local volufrac = ScaleAddLinkerNumber()
+
+    local volufrac = ScaleAddLinkerNumber() -- theta
     volufrac:add(porosity, saturation)
-=======
-    -- 
-   
 
     -- molecular diffusion
     local transportDiffTensor = ScaleAddLinkerMatrix()
-    transportDiffTensor:add(porosity*density, medium.diffusion)
+    transportDiffTensor:add(volufrac*density, medium.diffusion)
 
+    -- Scheidegger dispersion.
     if (medium.alphaT) then 
         local dispersion = BearScheidegger(DarcyVelocity, medium.alphaT, medium.alphaL)
         transportDiffTensor:add(density, dispersion)
     end
->>>>>>> feature-arne
+
 
 	-----------------------------------------
 	-- Equation [1]
@@ -164,52 +156,37 @@ function ProblemDisc:CreateElemDisc(subdom, medium)
 	-- $\partial_t (\Phi S_w \rho_w)
 	--		+ \nabla \cdot (\rho_w \vec{v}_w) = \rho_w \Gamma_w$
 
-<<<<<<< HEAD
-	-- fluid storage: \Phi S_w \rho_w
-    local storage = ScaleAddLinkerNumber()
-    storage:add(volufrac, density)
-	-- flux of the fluid phase \rho_w \vec{v}_w
-    local fluidFlux = ScaleAddLinkerVector()
-=======
+
 	-- fluid storage: \Phi \rho_w S_w
-    local fluidStorage = ScaleAddLinkerNumber()
+    	local fluidStorage = ScaleAddLinkerNumber()
 	-- flux \rho_w \vec{v}_w
-    local fluidFlux = ScaleAddLinkerVector()
+    	local fluidFlux = ScaleAddLinkerVector()
     
-    fluidStorage:add(porosity*density, saturation) -- INSERT: saturation  or 1.0
->>>>>>> feature-arne
-    fluidFlux:add(density, DarcyVelocity)
+    	-- fluidStorage:add(porosity*density, saturation) -- INSERT: saturation  or 1.0
+    	fluidStorage:add(volufrac, density)
 
-    -- oberbeck-boussinesq approximation
-    if self.problem.flow.boussinesq then
-        -- boussinesq fluid storage: \Phi \rho_w0 S_w
-        local storageB = ScaleAddLinkerNumber()
-        -- boussinesq flux \rho_w0 \vec{v}_w
-        local fluidFluxB = ScaleAddLinkerVector()
+    	fluidFlux:add(density, DarcyVelocity)
 
-        storageB:add(self.problem.flow.density.min, volufrac)
-        fluidFluxB:add(self.problem.flow.density.min, DarcyVelocity)
+    	-- oberbeck-boussinesq approximation
+    	if self.problem.flow.boussinesq then
+        	-- boussinesq fluid storage: \Phi \rho_w0 S_w
+        	local storageB = ScaleAddLinkerNumber()
+        	-- boussinesq flux \rho_w0 \vec{v}_w
+        	local fluidFluxB = ScaleAddLinkerVector()
 
-        elemDisc["flow"]:set_mass(storageB)
-        elemDisc["flow"]:set_flux(fluidFluxB)
+        	storageB:add(self.problem.flow.density.min, volufrac)
+        	fluidFluxB:add(self.problem.flow.density.min, DarcyVelocity)
 
-    else
-<<<<<<< HEAD
-        elemDisc["flow"]:set_mass(storage)
-        elemDisc["flow"]:set_flux(fluidFlux)
-    end
-    elemDisc["flow"]:set_mass_scale(0.0)
-=======
-       
+        	elemDisc["flow"]:set_mass(storageB)
+        	elemDisc["flow"]:set_flux(fluidFluxB)
 
-        elemDisc["flow"]:set_mass(fluidStorage)
-        elemDisc["flow"]:set_flux(fluidFlux)
-    end
+    	else
+        	elemDisc["flow"]:set_mass(fluidStorage)
+        	elemDisc["flow"]:set_flux(fluidFlux)
+    	end
 
-
-	elemDisc["flow"]:set_mass_scale(0.0)
-    elemDisc["flow"]:set_diffusion(0.0)
->>>>>>> feature-arne
+    	elemDisc["flow"]:set_mass_scale(0.0)
+    	elemDisc["flow"]:set_diffusion(0.0)
 
 	-----------------------------------------
 	-- Equation [2]
@@ -219,32 +196,22 @@ function ProblemDisc:CreateElemDisc(subdom, medium)
 	-- 		+ \nabla \cdot (\rho_w \omega q - \Phi S_w \rho_w,min D \nabla \omega)
 	--			= \phi S_w \rho_w \Gamma_w$
 
-<<<<<<< HEAD
-    -- diffusive flux: \Phi S_w \rho_w D \nabla \omega
-    local diffusion = ScaleAddLinkerMatrix()
-    diffusion:add(volufrac, self.problem.flow.diffusion*self.problem.flow.density.min)
-
-    -- advective flux is equal to fluidFlux * mass fraction
-    elemDisc["transport"]:set_mass_scale(storage)
-    elemDisc["transport"]:set_velocity(fluidFlux)
-    elemDisc["transport"]:set_diffusion(diffusion)
-    -- set upwind scheme to FullUpwind, if no upwind scheme is defined
-    if self.problem.flow.upwind == "full" or self.problem.flow.upwind == nil then
-        elemDisc["transport"]:set_upwind(FullUpwind())
-    elseif self.problem.flow.upwind == "partial" then
-        elemDisc["transport"]:set_upwind(PartialUpwind())
-=======
+    ---local diffusion = ScaleAddLinkerMatrix()
+    --diffusion:add(volufrac, self.problem.flow.diffusion*self.problem.flow.density.min)
     elemDisc["transport"]:set_mass(0.0)
     elemDisc["transport"]:set_mass_scale(fluidStorage) -- * w
     elemDisc["transport"]:set_velocity(fluidFlux)
     elemDisc["transport"]:set_diffusion(transportDiffTensor)
-    elemDisc["transport"]:set_upwind(myUpwind)
+    
+-- set upwind scheme to FullUpwind, if no upwind scheme is defined
+    if self.problem.flow.upwind == "full" or self.problem.flow.upwind == nil then
+        elemDisc["transport"]:set_upwind(FullUpwind())
+    elseif self.problem.flow.upwind == "partial" then
+        elemDisc["transport"]:set_upwind(PartialUpwind())
 
 
    
- --   ScaleAddLinkerNumber()
-  --  capillary:add(-1.0, elemDisc["flow"]:value())
-    
+   -- TODO: Remove...
    --[[ if medium.conductivity.type == "exp" then
         conductivity:set_input(0, capillary)
 
@@ -255,9 +222,8 @@ function ProblemDisc:CreateElemDisc(subdom, medium)
     if medium.saturation.type == "exp" then
         saturation:set_input(0, capillary)
 
-    elseif medium.saturation.type == "vanGenuchten" then
-        saturation:set_capillary(capillary)
->>>>>>> feature-arne
+    elseif medium.saturation.type == "vanGenuchten" then 
+		saturation:set_capillary(capillary)
     end
     --]]
 
@@ -399,7 +365,8 @@ function ProblemDisc:CreateDomainDisc(approxSpace)
     if (dirichletBnd) then  self.domainDisc:add(dirichletBnd) end
     if (neumannBnd["p"]) then  self.domainDisc:add(neumannBnd["p"]) end
     if (neumannBnd["c"]) then  self.domainDisc:add(neumannBnd["c"]) end
-
+		
+-- TODO: EOD HERE.
 <<<<<<< HEAD
     -- Adding Dirac Sources
     if self.problem.sources ~= nil then
