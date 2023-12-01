@@ -16,23 +16,12 @@ util.CheckAndPrintHelp("Unsaturated density flow problem");
 -- problem specific parameters are in the config file
 ARGS =
 {
-<<<<<<< HEAD
     problemID         = util.GetParam("--problem-id", "trench2D"),
     numPreRefs        = util.GetParamNumber("--numPreRefs", 1, "number of refinements before parallel distribution"),
     numRefs           = util.GetParamNumber("--numRefs", 4, "number of refinements after parallel distribution"),
     dt			      = util.GetParamNumber("--dt", 0.001), -- time step length
     newton            = util.HasParamOption("--newton", false),
-=======
-  problemID         = util.GetParam("--problem-id", "trench2D"),
-  numPreRefs        = util.GetParamNumber("--numPreRefs", 1, "number of refinements before parallel distribution"),
-  numRefs           = util.GetParamNumber("--numRefs", 4, "number of refinements after parallel distribution"),
-  check             = util.HasParamOption("--check", false, "checks if the config file has the correct layout"),
-  outFileNamePrefix = util.GetParam("-o", "unsat_"),
-  dt			          = util.GetParamNumber("-dt", 0.001), -- time step length
-  newton            = util.HasParamOption("--newton", false),
-
-  adaptive = util.HasParamOption("--adaptive", false),
->>>>>>> feature-arne
+    adaptive = util.HasParamOption("--adaptive", false),
 }
 
 if ARGS.adaptive then 
@@ -78,19 +67,10 @@ local dtMax = problem.time.dtmax
 local TOL = problem.time.tol
 local dtred = problem.time.dtred
 
-<<<<<<< HEAD
+local dbgWriter = GridFunctionDebugWriter(approxSpace)
 if ARGS.newton then
     util.SolveNonlinearTimeProblem(disc.u, domainDisc, solver, disc.vtk, ARGS.problemID.."_",
     "ImplEuler", 1.0, startTime, endTime, dt, dtMin, dtred)
-=======
---exit()
-local dbgWriter = GridFunctionDebugWriter(approxSpace)
-
-if ARGS.newton then
-  -- Classic time integration.
-  util.SolveNonlinearTimeProblem(disc.u, domainDisc, solver, disc.vtk, ARGS.outFileNamePrefix,
-  "ImplEuler", 1.0, startTime, endTime, dt, dtMin, dtred)
->>>>>>> feature-arne
 else
     -- LIMEX time-stepping
 
