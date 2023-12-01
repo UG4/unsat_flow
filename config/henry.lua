@@ -9,10 +9,14 @@ params =
 }
 
 -- additional constants for vanGenuchten
+<<<<<<< HEAD
 henry2D_rho = 998.23
 henry2D_g = -9.81 -- must be negative!
 rhog = (-1.0)*henry2D_rho*henry2D_g
 tstop = 50 * 86400 -- 100 days
+=======
+rhog =  1000 * 9.81
+>>>>>>> feature-arne
 
 
 local henry =
