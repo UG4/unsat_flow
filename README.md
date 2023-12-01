@@ -11,6 +11,7 @@ https://github.com/Nordegraf/unsat_flow
 The Model consists of two coupled PDEs:
 
 $\frac{\partial}{\partial t} (\phi S_w \rho_w) + \nabla \rho_w \vec{q} = \rho_w \Gamma$
+
 $\frac{\partial}{\partial t}(\phi S_w \rho_w \omega) + \nabla  (\vec{q} \rho_w \omega - \phi S_w \rho_w D \nabla \omega) = \phi S_w \rho_w \Gamma $
 
 
@@ -18,6 +19,7 @@ $\frac{\partial}{\partial t}(\phi S_w \rho_w \omega) + \nabla  (\vec{q} \rho_w \
 The equations used are: 
 
 $\partial_t (\Phi \rho_w S_w) + \nabla \cdot [\rho_w \vec{v}_w] = \rho_w \Gamma_w$
+
 $\partial_t (\Phi \rho_w S_w \omega) + \nabla \cdot [\rho_w \omega \vec{v}_w - \rho_w D \nabla \omega] = \rho_w \omega \Gamma_w$
 
 
