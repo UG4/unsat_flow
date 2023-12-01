@@ -8,7 +8,7 @@ ug_load_script("ug_util.lua")
 -- namespace creation
 util.unsat = util.unsat or {}
 
-local json = require("json")
+local json = util.json
 
 
 -- object oriented clustering of the Approximation Space, Element Discretisation and
@@ -59,11 +59,11 @@ function ProblemDisc:CreateElemDisc(subdom, medium)
 	elemDisc["flow"] = ConvectionDiffusion(self.cmp[1], subdom, "fv1")      
     elemDisc["transport"] = ConvectionDiffusion(self.cmp[2], subdom, "fv1") 
 
-    -- cappilary pressure (auxiliary).
+    -- Capillary pressure (auxiliary).
     local capillary = ScaleAddLinkerNumber()
     capillary:add(-1.0, elemDisc["flow"]:value())
 
-    -- local viscosity = self.mu
+    -- Local viscosity = self.mu
     local viscosity = self:viscosity()
     if self.problem.flow.viscosity.type ~= "const" then
        viscosity:set_input(0, elemDisc["transport"]:value())
