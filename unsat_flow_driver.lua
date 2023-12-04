@@ -183,7 +183,6 @@ local limexDesc = {
   print("...DONE!")
   
 
-  
   local weightedMetricSpace=CompositeSpace()
   --local spaceP = VelEnergyComponentSpace("p", 2, inst.coef.EnergyTensorFlow)
   --local spaceC = L2ComponentSpace("c", 2, inst.coef.Conductivity2)
@@ -218,11 +217,6 @@ local limexDesc = {
     limex:set_debug_for_timestepper(dbgWriter)
     limexNLSolver[1]:set_debug(dbgWriter)
   end
-
-  -- Time step observer.
-  local vtkobserver = VTKOutputObserver("LIMEX_"..ARGS.problemID..".vtk", disc.vtk)
-  limex:attach_observer(vtkobserver)
-  
  
   if ARGS.adaptive then
     print(adaptivityUtil)
@@ -251,14 +245,15 @@ local limexDesc = {
     end
 
     -- Time step observer.
+    local vtkobserver = VTKOutputObserver(problem.output.file..filename..".vtk", disc.vtk)
+    limex:attach_observer(vtkobserver)
+
     local filename = nil
     if problem.output.filename ~= nil then
         filename = problem.output.filename
     else
         filename = ARGS.problemID
     end
-    local vtkobserver = VTKOutputObserver(problem.output.file..filename..".vtk", disc.vtk)
-    limex:attach_observer(vtkobserver)
 
     -- post process for saving time step size
     local luaObserver = LuaCallbackObserver()
