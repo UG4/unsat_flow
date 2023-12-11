@@ -23,19 +23,19 @@ local well2D =
       type = "vanGenuchten",
       thetaS = 0.250, thetaR = 0.153,
       alpha = 0.79/rhog, n = 10.4,
-      Ksat = 1.08},
+      Ksat = 1.08/86400},
 
     { uid = "@TouchetSiltLoam",
       type = "vanGenuchten",
       thetaS = 0.469, thetaR = 0.190,
       alpha = 0.50/rhog, n = 7.09,
-      Ksat = 3.03},
+      Ksat = 3.03/86400},
 
     { uid = "@SiltLoam",
       type = "vanGenuchten",
       thetaS = 0.396, thetaR = 0.131,
       alpha = 0.423/rhog, n = 2.06,
-      Ksat = 0.0496},
+      Ksat = 0.0496/86400},
   },
 
   flow =
@@ -48,12 +48,7 @@ local well2D =
       min = well_rho,      -- [ kg m^{-3} ] water density
       max = 1025.0,           -- [ kg m^{-3} ] saltwater density
     },
-
-    viscosity =
-    { type = "const",          -- viscosity function ["const", "real"]
-      mu0 = 1.002e-3                   -- [ Pa s ]
-    },
-    diffusion   = 7.64e-8 -- [ m^2/s ]
+    diffusion   = 18.8571e-6 -- [ m^2/s ]
   },
   medium =
   {
@@ -71,8 +66,9 @@ local well2D =
  },
   sources =
   {
-    {cmp = "p", value = -0.0003, subset = "Well", x = 1.0, y = 0.5},
-    {cmp = "c", transport = -0.0003, subset = "Well", x = 1.0, y = 0.5},
+    {
+      {cmp = "p", strength = -0.0003, subset = "Well", coord= {1.0, 0.5}, substances = {cmp = "c"}}
+    }
   },
 
   initial =

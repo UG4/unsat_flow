@@ -32,7 +32,7 @@ local henry =
       type = "vanGenuchten",
       thetaS = 0.37, thetaR = 0.043,
       alpha = 2.5, n = 1.58,
-      Ksat = 1}
+      Ksat = 1.0}
   },
 
   flow =
@@ -45,12 +45,7 @@ local henry =
       min = henry2D_rho,      -- [ kg m^{-3} ] water density
       max = 1025.0,           -- [ kg m^{-3} ] saltwater density
     },
-
-    viscosity =
-    { type = "const",          -- viscosity function ["const", "real"]
-      mu0 = 1.002e-3                   -- [ Pa s ]
-    },
-    diffusion   = 7.64e-8 -- [ m^2/s ]
+    diffusion   = 7.64e-8, -- [ m^2/s ],
   },
    medium =
    {

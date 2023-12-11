@@ -81,10 +81,9 @@ else
   local limexNLSolver = {}
   local limexDomainDisc = {}
 
-
   -- Linear solvers.
   for i = 1, nstages do
-    limexLSolver[i] = util.solver.CreateSolver(problem.solver.linSolver)
+    limexLSolver[i] = util.solver.CreateSolver(problem.linSolver)
     limexDomainDisc[i] = domainDisc
   end
 
@@ -93,6 +92,7 @@ else
     -- One-step Newton
     local limexConvCheck = ConvCheck(1, 1e-12, 1e-10, true)
     limexConvCheck:set_supress_unsuccessful(true)
+    limexConvCheck:set_minimum_defect(3e-10)
 
     for i = 1, nstages do
       limexNLSolver[i] = NewtonSolver()
@@ -243,16 +243,16 @@ else
     limexNLSolver[1]:set_debug(dbgWriter)
   end
 
-  -- Time step observer.
-  local vtkobserver = VTKOutputObserver(problem.output.file .. filename .. ".vtk", disc.vtk)
-  limex:attach_observer(vtkobserver)
-
   local filename = nil
   if problem.output.filename ~= nil then
     filename = problem.output.filename
   else
     filename = ARGS.problemID
   end
+
+  -- Time step observer.
+  local vtkobserver = VTKOutputObserver(problem.output.file .. filename .. ".vtk", disc.vtk)
+  limex:attach_observer(vtkobserver)
 
   -- post process for saving time step size
   local luaObserver = LuaCallbackObserver()
@@ -273,7 +273,7 @@ else
   local sw = CuckooClock()
   sw:tic()
   -- Solve problem.
-  limexConvCheck:set_minimum_defect(3e-10)
+
   limex:apply(disc.u, endTime, disc.u, 0.0)
 
   print("CDELTA=" .. sw:toc())

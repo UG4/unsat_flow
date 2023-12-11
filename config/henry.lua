@@ -9,14 +9,10 @@ params =
 }
 
 -- additional constants for vanGenuchten
-<<<<<<< HEAD
 henry2D_rho = 998.23
 henry2D_g = -9.81 -- must be negative!
 rhog = (-1.0)*henry2D_rho*henry2D_g
 tstop = 50 * 86400 -- 100 days
-=======
-rhog =  1000 * 9.81
->>>>>>> feature-arne
 
 
 local henry =
@@ -35,8 +31,8 @@ local henry =
     { uid = "@Sand",
       type = "vanGenuchten",
       thetaS = 0.37, thetaR = 0.043,
-      alpha = 0.087, n = 1.58,
-      Ksat = 1}
+      alpha = 0.087/rhog, n = 1.58,
+      Ksat = 0.01} -- [ m/s ]
   },
 
   flow =
@@ -49,12 +45,8 @@ local henry =
       min = henry2D_rho,      -- [ kg m^{-3} ] water density
       max = 1025.0,           -- [ kg m^{-3} ] saltwater density
     },
-
-    viscosity =
-    { type = "const",          -- viscosity function ["const", "real"]
-      mu0 = 1.002e-3                   -- [ Pa s ]
-    },
-    diffusion   = 7.64e-8 -- [ m^2/s ]
+    diffusion   = 18.8571e-6,  -- [ m^2/s ]
+    upwind  = "partial"
   },
    medium =
    {
@@ -85,7 +77,7 @@ local henry =
 
     -- Land
     { cmp = "c", type = "dirichlet", bnd = "Inflow", value = 0.0 },
-    { cmp = "p", type = "flux", bnd = "Inflow", inner = "Medium", value = -7.64e-5 }
+    { cmp = "p", type = "flux", bnd = "Inflow", inner = "Medium", value = 6.6e-2 }
 
     -- Top
     --{ cmp = "p", type = "flux", bnd = "Top", inner="Medium", value=params.recharge},
