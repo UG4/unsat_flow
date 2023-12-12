@@ -12,16 +12,7 @@ The Model consists of two coupled PDEs:
 
 $\frac{\partial}{\partial t} (\phi S_w \rho_w) + \nabla \rho_w \vec{q} = \rho_w \Gamma$
 
-$\frac{\partial}{\partial t}(\phi S_w \rho_w \omega) + \nabla  (\vec{q} \rho_w \omega - \phi S_w \rho_w D \nabla \omega) = \phi S_w \rho_w \Gamma $
-
-
-## Documentation
-The equations used are: 
-
-$\partial_t (\Phi \rho_w S_w) + \nabla \cdot [\rho_w \vec{v}_w] = \rho_w \Gamma_w$
-
-$\partial_t (\Phi \rho_w S_w \omega) + \nabla \cdot [\rho_w \omega \vec{v}_w - \rho_w D \nabla \omega] = \rho_w \omega \Gamma_w$
-
+$\frac{\partial}{\partial t}(\phi S_w \rho_w \omega) + \nabla  [\vec{q} \rho_w \omega - \phi S_w \rho_w D \nabla \omega] = \rho_w \Gamma $
 
 The first equation models groundwater flow in a porous medium, the second equation models advection and diffusion of a contaminant.
 
@@ -33,8 +24,6 @@ ugshell -ex unsat_flow_app/unsat_flow_driver.lua --problem-id "example" --check
 
 ## Dependencies
 This app depends on the following UG4 plugins: ConvectionDiffusion, LIMEX, Richards.
-
-
 
 # Setup
 Please refer to the offical documentation of [`ughub`](https://github.com/UG4/ughub) on how to setup and compile UG4 correctly.
