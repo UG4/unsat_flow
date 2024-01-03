@@ -56,16 +56,14 @@ function ProblemDisc:CreateElemDisc(subdom, medium)
     elemDisc["flow"] = ConvectionDiffusion("p", subdom, "fv1")      -- flow equation
     elemDisc["transport"] = ConvectionDiffusion("c", subdom, "fv1") -- transport equation
 
-    -- Capillary pressure (auxiliary).
-    local capillary = ScaleAddLinkerNumber()
-    capillary:add(-1.0, elemDisc["flow"]:value())
-
+    -- ##### Density #####
     local density = self:density()
     if self.problem.flow.density.type ~= "const" then
         density:set_input(0, elemDisc["transport"]:value())
     end
     self.rho = density
 
+    -- ##### Porosity #####
     local porosity = medium.porosity -- phi
     -- if the porosity is given as a parameter it must be equal to the saturated water content
     if type(medium.porosity) == "string" then
@@ -77,9 +75,11 @@ function ProblemDisc:CreateElemDisc(subdom, medium)
     end
 
     -- the vanGenuchten model is calculated using the Richards Plugin
-    -- capillary pressure: air pressure is set to 0
-    -- => p_c = - p_w
-    -- warn if two different media are used for conductivity and saturation
+    -- Capillary pressure (auxiliary).
+    -- air pressure is set to 0 => p_c = - p_w
+    local capillary = ScaleAddLinkerNumber()
+    capillary:add(-1.0, elemDisc["flow"]:value())
+
     self:assert_richards_parameters(medium)
     local RichardsUserData = RichardsUserDataFactory(capillary)
     conductivity = RichardsUserData:create_conductivity(self.modelMap[medium.conductivity.value])
@@ -88,11 +88,14 @@ function ProblemDisc:CreateElemDisc(subdom, medium)
     local DarcyVelocity = DarcyVelocityLinker()
     -- to calculate the relative hydraulic conductivity one has to specify either the mediums
     -- permeability K and viscosity mu or the hydraulic conductivity in a saturated medium Ksat
-    if medium.permeability and self.problem.flow.viscosity then -- case 1: permeability and viscosity are given
+    if medium.permeability and self.problem.flow.viscosity then 
+        -- case 1: permeability and viscosity are given
+        -- Darcy Velocity will be: $\vec q := -k_r*K/mu (\grad p - \rho \vec g)$
         local permeability = medium.permeability
         local khyd = ScaleAddLinkerMatrix()
-        khyd:add(conductivity, permeability)
+        khyd:add(conductivity, -1.0*permeability) -- Here Ksat must be 1.0!
 
+        -- ##### Viscosity #####
         local viscosity = self:viscosity()
         if type(viscosity) ~= "number" then
             if self.problem.flow.viscosity.type ~= "const" then
@@ -102,15 +105,14 @@ function ProblemDisc:CreateElemDisc(subdom, medium)
         
         self.mu = viscosity
 
-        -- $\vec q := -k_r*K/mu (\grad p - \rho \vec g)$
         DarcyVelocity:set_permeability(khyd)
         DarcyVelocity:set_viscosity(viscosity)
     else -- case 2: Ksat is given
         -- $\vec q := -k_r*Ksat/rho*g (\grad p - \rho \vec g)$
         local permeability = ScaleAddLinkerMatrix()
-        permeability:add(conductivity, -1.0)
+        permeability:add(conductivity, 1.0)
         DarcyVelocity:set_permeability(permeability)
-        DarcyVelocity:set_viscosity(density * self.problem.flow.gravity)
+        DarcyVelocity:set_viscosity(density * -1.0*self.problem.flow.gravity)
     end
 
     DarcyVelocity:set_pressure_gradient(elemDisc["flow"]:gradient())
@@ -119,16 +121,6 @@ function ProblemDisc:CreateElemDisc(subdom, medium)
 
     local volufrac = ScaleAddLinkerNumber() -- theta
     volufrac:add(porosity, saturation)
-
-    -- molecular diffusion
-    local transportDiffTensor = ScaleAddLinkerMatrix()
-    transportDiffTensor:add(volufrac * density, self.problem.flow.diffusion)
-
-    -- Scheidegger dispersion.
-    if (medium.alphaT) then
-        local dispersion = BearScheidegger(DarcyVelocity, medium.alphaT, medium.alphaL)
-        transportDiffTensor:add(density, dispersion)
-    end
 
     -----------------------------------------
     -- Equation [1]
@@ -150,14 +142,14 @@ function ProblemDisc:CreateElemDisc(subdom, medium)
     -- oberbeck-boussinesq approximation
     if self.problem.flow.boussinesq then
         -- boussinesq fluid storage: \Phi \rho_w0 S_w
-        local storageB = ScaleAddLinkerNumber()
+        local fluidStorageB = ScaleAddLinkerNumber()
         -- boussinesq flux \rho_w0 \vec{v}_w
         local fluidFluxB = ScaleAddLinkerVector()
 
-        storageB:add(self.problem.flow.density.min, volufrac)
+        fluidStorageB:add(self.problem.flow.density.min, volufrac)
         fluidFluxB:add(self.problem.flow.density.min, DarcyVelocity)
 
-        elemDisc["flow"]:set_mass(storageB)
+        elemDisc["flow"]:set_mass(fluidStorageB)
         elemDisc["flow"]:set_flux(fluidFluxB)
     else
         elemDisc["flow"]:set_mass(fluidStorage)
@@ -175,14 +167,21 @@ function ProblemDisc:CreateElemDisc(subdom, medium)
     -- 		+ \nabla \cdot (\rho_w \omega q - \Phi S_w \rho_w,min D \nabla \omega)
     --			= \phi S_w \rho_w \Gamma_w$
 
-    ---local diffusion = ScaleAddLinkerMatrix()
-    --diffusion:add(volufrac, self.problem.flow.diffusion*self.problem.flow.density.min)
+    -- molecular diffusion
+    local transportDiffTensor = ScaleAddLinkerMatrix()
+    transportDiffTensor:add(volufrac * density, self.problem.flow.diffusion)
+
+    -- Scheidegger dispersion.
+    if (medium.alphaT) then
+        local dispersion = BearScheidegger(DarcyVelocity, medium.alphaT, medium.alphaL)
+        transportDiffTensor:add(density, dispersion)
+    end
+
     elemDisc["transport"]:set_mass(0.0)
     elemDisc["transport"]:set_mass_scale(fluidStorage) -- * w
     elemDisc["transport"]:set_velocity(fluidFlux)
     elemDisc["transport"]:set_diffusion(transportDiffTensor)
-
-    -- set upwind scheme to FullUpwind, if no upwind scheme is defined
+    
     if self.problem.flow.upwind == "full" then
         elemDisc["transport"]:set_upwind(FullUpwind())
     elseif self.problem.flow.upwind == "partial" then

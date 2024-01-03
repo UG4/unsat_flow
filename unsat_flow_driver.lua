@@ -81,6 +81,10 @@ else
   local limexNLSolver = {}
   local limexDomainDisc = {}
 
+  if problem.linSolver == nil then
+    problem.linSolver = problem.solver.linSolver
+  end
+
   -- Linear solvers.
   for i = 1, nstages do
     limexLSolver[i] = util.solver.CreateSolver(problem.linSolver)

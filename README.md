@@ -20,7 +20,7 @@ Saturation and hydraulic conductivity are calculated using the van Genuchten Mod
 
 Usage:
 
-ugshell -ex unsat_flow_app/unsat_flow_driver.lua --problem-id "example" --check
+ugshell -ex unsat_flow_app/unsat_flow_driver.lua --problem-id "example"
 
 ## Dependencies
 This app depends on the following UG4 plugins: ConvectionDiffusion, LIMEX, Richards.

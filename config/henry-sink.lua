@@ -40,14 +40,12 @@ local henry =
       type = "vanGenuchten",
       thetaS = 0.396, thetaR = 0.131,
       alpha = 0.423/rhog*10, n = 2.06, 
-      Ksat = 1.0  -- Relative permeability!
        }, 
     
     { uid = "@Clay",  -- modified n
       type = "vanGenuchten",
       alpha = 0.152/rhog*10, n = 3.06,  
       thetaS = 0.446, thetaR = 0.1, 
-      Ksat = 1.0  -- Relative permeability!
       },  --KSat= kappa/mu*rho*g   <=> kappa = Ksat*mu/(rho*g) 
     },
 
@@ -69,11 +67,12 @@ local henry =
     { type = "const",      -- viscosity function ["const", "real"] 
       mu0 = 1e-3        -- [ kg m^{-3} ]  
     },
+    diffusion   = 18.8571e-6,   -- constant
   },
    medium = 
    {
       {   subsets = {"Medium"}, 
-          porosity = 0.35,
+          porosity = 0.396,
           saturation = 
           { type = "vanGenuchten",
             value = "@Silt",
@@ -82,7 +81,6 @@ local henry =
           { type  = "vanGenuchten",
             value   = "@Silt",
           },
-          diffusion   = 18.8571e-6,   -- constant
           permeability  = 1.019368e-9,  -- constant
       },
   },
@@ -113,7 +111,7 @@ local henry =
   initial = 
   {
     { cmp = "c", value = 0.0 },
-    { cmp = "p", value = "HydroPressure" },		
+    { cmp = "p", value = "HydroPressure" }
   },
 
   boundary = 
