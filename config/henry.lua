@@ -35,7 +35,7 @@ local henry =
       type = "vanGenuchten",
       thetaS = 0.35, thetaR = 0.0,
       alpha = 0.087/rhog, n = 1.58,
-      Ksat = 1e-5} -- [ m/s ]
+      Ksat = 1e-2} -- [ m/s ]
   },
 
   flow =
@@ -43,12 +43,12 @@ local henry =
     boussinesq = false,
     gravity = henry2D_g,      -- [ m s^{-2}], must be negative!
     density =
-    { type = "ideal",         -- density function ["linear", "exp", "ideal"]
+    { type = "linear",         -- density function ["linear", "exp", "ideal"]
       min = henry2D_rho,      -- [ kg m^{-3} ] water density
       max = 1025.0,           -- [ kg m^{-3} ] saltwater density
     },
     diffusion   = 18.8571e-6,  -- [ m^2/s ]
-    upwind  = "partial"
+    upwind  = "full"
   },
    medium =
    {
@@ -79,7 +79,7 @@ local henry =
 
     -- Land
     { cmp = "c", type = "dirichlet", bnd = "Inflow", value = 0.0 },
-    { cmp = "p", type = "flux", bnd = "Inflow", inner = "Medium", value = 6.6e-5 }
+    { cmp = "p", type = "flux", bnd = "Inflow", inner = "Medium", value = -6.6e-2 }
 
     -- Top
     --{ cmp = "p", type = "flux", bnd = "Top", inner="Medium", value=params.recharge},
@@ -98,14 +98,14 @@ local henry =
       rap			= true,		                          -- comutes RAP-product instead of assembling if true
       baseLevel	= ARGS.numPreRefs,                -- gmg - baselevel
     },
-    --[[convCheck =
+    convCheck =
       { type		= "standard",
         iterations	= 30,		-- number of iterations
         absolute	= 0.5e-8,	-- absolut value of defact to be reached; usually 1e-8 - 1e-10 (must be stricter / less than in newton section)
         reduction	= 1e-7,		-- reduction factor of defect to be reached; usually 1e-7 - 1e-8 (must be stricter / less than in newton section)
         verbose		= true		-- print convergence rates if true
-      }]]--
-      convCheck =
+      }
+     --[[ convCheck =
       { type    = "composite",
         iterations  = 30,   -- number of iterations
         absolute  = 0.5e-8, -- absolut value of defact to be reached; usually 1e-8 - 1e-10 (must be stricter / less than in newton section)
@@ -115,7 +115,7 @@ local henry =
         {cmp ="p"},
         {cmp="c"}
         }
-      }
+      }]]--
   },
 
   time =
@@ -128,7 +128,7 @@ local henry =
     dtmin	= ARGS.dt,	          -- [s]  minimal time step
     dtmax	= tstop/10,	            -- [s]  maximal time step
     dtred	= 0.5,			          -- [1]  reduction factor for time step
-    tol 	= 1e-2,
+    tol 	= 1e-3,
   },
 
   output =
