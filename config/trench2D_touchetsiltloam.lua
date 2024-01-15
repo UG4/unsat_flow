@@ -22,32 +22,32 @@ local trench2D =
     { uid = "@Sandstone",
       type = "vanGenuchten",
       thetaS = 0.250, thetaR = 0.153,
-      alpha = 0.79, n = 10.4,
-      Ksat = 1.08},
+      alpha = 0.79/rhog, n = 10.4,
+      Ksat = 1.08/86400},
 
     { uid = "@TouchetSiltLoam",
       type = "vanGenuchten",
       thetaS = 0.469, thetaR = 0.190,
-      alpha = 0.50, n = 7.09,
-      Ksat = 3.03},
+      alpha = 0.50/rhog, n = 7.09,
+      Ksat = 3.03/86400},
 
     { uid = "@SiltLoam",
       type = "vanGenuchten",
       thetaS = 0.396, thetaR = 0.131,
-      alpha = 0.423, n = 2.06,
-      Ksat = 0.0496},
+      alpha = 0.423/rhog, n = 2.06,
+      Ksat = 0.0496/86400},
 
     { uid = "@Clay",
       type = "vanGenuchten",
       thetaS = 0.446, thetaR = 0.0,
-      alpha = 0.152, n = 1.17,
-      Ksat = 8.2e-4},
+      alpha = 0.152/rhog, n = 1.17,
+      Ksat = 8.2e-4/86400},
 
     { uid = "@fictitious",
       type = "vanGenuchten",
       thetaS = 0.65, thetaR = 0,
-      alpha = 2.5, n = 2.5,
-      Ksat = 1}
+      alpha = 2.5/rhog, n = 2.5,
+      Ksat = 1/86400}
   },
 
   flow =
@@ -59,11 +59,6 @@ local trench2D =
     { type = "ideal",           -- density function ["linear", "exp", "ideal"]
       min = Trench2D_rho,       -- [ kg m^{-3} ] water density
       max = 1025.0,             -- [ kg m^{-3} ] saltwater density
-    },
-
-    viscosity =
-    { type = "real",            -- viscosity function ["const", "real"]
-      mu0 = 1.002e-3            -- [ kg m^{-3} ]
     },
     diffusion   = 18.8571e-6,   -- [m^2/s]
   },

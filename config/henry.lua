@@ -1,4 +1,7 @@
--- config for modelling the henry problem
+-- Modelled after:
+-- Improving the worthiness of the Henry problem as a benchmark for density-dependent groundwater flow models
+-- by Matthew J. Simpson and T. Prabhakar Clement
+-- 2004
 
 -- command line parameters
 params =
@@ -9,14 +12,10 @@ params =
 }
 
 -- additional constants for vanGenuchten
-<<<<<<< HEAD
-henry2D_rho = 998.23
-henry2D_g = -9.81 -- must be negative!
+henry2D_rho = 1000
+henry2D_g = -9.8 -- must be negative!
 rhog = (-1.0)*henry2D_rho*henry2D_g
-tstop = 50 * 86400 -- 100 days
-=======
-rhog =  1000 * 9.81
->>>>>>> feature-arne
+tstop = 100 * 86400 -- 100 days
 
 
 local henry =
@@ -34,27 +33,22 @@ local henry =
   parameter = {
     { uid = "@Sand",
       type = "vanGenuchten",
-      thetaS = 0.37, thetaR = 0.043,
-      alpha = 0.087, n = 1.58,
-      Ksat = 1}
+      thetaS = 0.35, thetaR = 0.0,
+      alpha = 0.087/rhog, n = 1.58,
+      Ksat = 1e-5} -- [ m/s ]
   },
 
   flow =
   {
     boussinesq = false,
-
     gravity = henry2D_g,      -- [ m s^{-2}], must be negative!
     density =
     { type = "ideal",         -- density function ["linear", "exp", "ideal"]
       min = henry2D_rho,      -- [ kg m^{-3} ] water density
       max = 1025.0,           -- [ kg m^{-3} ] saltwater density
     },
-
-    viscosity =
-    { type = "const",          -- viscosity function ["const", "real"]
-      mu0 = 1.002e-3                   -- [ Pa s ]
-    },
-    diffusion   = 7.64e-8 -- [ m^2/s ]
+    diffusion   = 18.8571e-6,  -- [ m^2/s ]
+    upwind  = "partial"
   },
    medium =
    {
@@ -85,7 +79,7 @@ local henry =
 
     -- Land
     { cmp = "c", type = "dirichlet", bnd = "Inflow", value = 0.0 },
-    { cmp = "p", type = "flux", bnd = "Inflow", inner = "Medium", value = -7.64e-5 }
+    { cmp = "p", type = "flux", bnd = "Inflow", inner = "Medium", value = 6.6e-5 }
 
     -- Top
     --{ cmp = "p", type = "flux", bnd = "Top", inner="Medium", value=params.recharge},
@@ -130,7 +124,7 @@ local henry =
     start 	= 0.0,				      -- [s]  start time point
     stop	= tstop,			        -- [s]  end time point
     max_time_steps = 1000,		  -- [1]	maximum number of time steps
-    dt		= 1000,		          -- [s]  initial time step
+    dt		= 40,		          -- [s]  initial time step
     dtmin	= ARGS.dt,	          -- [s]  minimal time step
     dtmax	= tstop/10,	            -- [s]  maximal time step
     dtred	= 0.5,			          -- [1]  reduction factor for time step

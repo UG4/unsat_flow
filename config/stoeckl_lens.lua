@@ -1,90 +1,75 @@
 -- config for modelling a drainage trench with constant groundwater flow
 
-well_rho = 998.23
-well_g = -9.81 -- must be negative!
-rhog = (-1.0)*well_rho*well_g
-numdays = 100
+lens_rho = 997
+lens_rho_c = 1021
+lens_g = -9.81 -- must be negative!
+rhog = (-1.0)*lens_rho*lens_g
+numdays = 1000
 tstop = numdays * 86400 -- 100 days
 
-local well2D =
+local lens =
 {
   -- The domain specific setup
   domain =
   {
     dim = 2,
-    grid = "grids/well.ugx",
+    grid = "grids/stoeckl_lens.ugx",
     numRefs = ARGS.numRefs,
     numPreRefs = ARGS.numPreRefs,
   },
 
   -- medium parameters for vanGenuchten Model
   parameter = {
-    { uid = "@Sandstone",
+    { uid = "@Material",
       type = "vanGenuchten",
-      thetaS = 0.250, thetaR = 0.153,
-      alpha = 0.79/rhog, n = 10.4,
-      Ksat = 1.08/86400},
-
-    { uid = "@TouchetSiltLoam",
-      type = "vanGenuchten",
-      thetaS = 0.469, thetaR = 0.190,
-      alpha = 0.50/rhog, n = 7.09,
-      Ksat = 3.03/86400},
-
-    { uid = "@SiltLoam",
-      type = "vanGenuchten",
-      thetaS = 0.396, thetaR = 0.131,
+      thetaS = 0.39, thetaR = 0.1,
       alpha = 0.423/rhog, n = 2.06,
-      Ksat = 0.0496/86400},
+      Ksat = 4.5e-3}
   },
 
   flow =
   {
     boussinesq = false,
 
-    gravity = well_g,      -- [ m s^{-2}], must be negative!
+    gravity = lens_g,      -- [ m s^{-2}], must be negative!
     density =
-    { type = "ideal",         -- density function ["linear", "exp", "ideal"]
-      min = well_rho,      -- [ kg m^{-3} ] water density
-      max = 1025.0,           -- [ kg m^{-3} ] saltwater density
+    { type = "linear",         -- density function ["linear", "exp", "ideal"]
+      min = lens_rho,      -- [ kg m^{-3} ] water density
+      max = lens_rho_c,           -- [ kg m^{-3} ] saltwater density
     },
-    diffusion   = 18.8571e-6 -- [ m^2/s ]
+    diffusion   = 10e-9, -- [ m^2/s ]
+    upwind = "full"
   },
   medium =
   {
-     {   subsets = {"Inner"},
-         porosity = "@SiltLoam", -- uid of a medium defined under parameter or number
+     {   subsets = {"inner"},
+         porosity = "@Material", -- uid of a medium defined under parameter or number
          saturation =
          { type = "vanGenuchten",
-           value = "@SiltLoam",
+           value = "@Material",
          },
          conductivity =
          { type  = "vanGenuchten",
-           value   = "@SiltLoam",
-         },
+           value   = "@Material",
+         }
      },
  },
-  sources =
-  {
-    {
-      {cmp = "p", strength = -0.0003, subset = "Well", coord= {1.0, 0.5}, substances = {cmp = "c"}}
-    }
-  },
 
-  initial =
+ initial =
   {
-    { cmp = "c", value = 0.0 },
-    { cmp = "p", value = "WellPressureStart" },
+    { cmp = "c", value = 1.0 },
+    { cmp = "p", value = "HydroPressure" },
   },
 
   boundary =
   {
     -- Top
-    {cmp = "p", type = "flux", bnd = "Top", inner="Inner", value = -0.00009},
-    {cmp = "c", type = "dirichlet", bnd = "Top", value = 1.0},
+    {cmp = "p", type = "neumann", bnd = "top", inner="inner", value = "top_boundary"},
+    {cmp = "c", type = "dirichlet", bnd = "top", value = 0.0},
 
-    -- Aquifer
-    {cmp = "p", type = "dirichlet", bnd = "Aquifer", value = "WellAquiferBoundary" }
+    -- Left
+    {cmp = "p", type = "dirichlet", bnd = "left", value = "left_boundary"},
+    {cmp = "c", type = "dirichlet", bnd = "left", value = 1.0},
   },
 
   linSolver =
@@ -113,10 +98,10 @@ local well2D =
     start 	= 0.0,				      -- [s]  start time point
     stop	= tstop,			        -- [s]  end time point
     max_time_steps = 10000,		  -- [1]	maximum number of time steps
-    dt		= 100,		          -- [s]  initial time step
+    dt		= 0.864,		          -- [s]  initial time step
     dtmin	= 0.001,	          -- [s]  minimal time step
-    dtmax	= tstop/10,	            -- [s]  maximal time step
-    dtred	= 0.5,			          -- [1]  reduction factor for time step
+    dtmax	= 8.64*10,	            -- [s]  maximal time step
+    dtred	= 0.3,			          -- [1]  reduction factor for time step
     tol 	= 1e-2,
   },
 
@@ -128,13 +113,22 @@ local well2D =
 
 }
 
+T0 = 200*60 -- phase switch, after quasi steady state
 
-function WellAquiferBoundary(x, y, t)
-  return true, (1.0 - y) * rhog
+function HydroPressure(x, y)
+  return y * lens_rho_c * lens_g
 end
 
-function WellPressureStart(x, y, t)
-  return (1.0 - y) * rhog
+function top_boundary(x, y, t, si)
+  if t > T0 then
+    return false, 0.0
+  else
+    return true, 0.046/86400 -- [m^3/s]
+  end
 end
 
-return well2D
+function left_boundary(x, y, t, si)
+  return true, y * lens_rho_c * lens_g 
+end
+
+return lens
