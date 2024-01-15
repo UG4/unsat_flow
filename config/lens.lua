@@ -1,18 +1,18 @@
 -- config for modelling a drainage trench with constant groundwater flow
 
-Trench2D_rho = 998.23
-Trench2D_g = -9.81 -- must be negative!
-rhog = (-1.0)*Trench2D_rho*Trench2D_g
-numdays = 15
-tstop = numdays * 86400 -- 500 days
+well_rho = 998.23
+well_g = -9.81 -- must be negative!
+rhog = (-1.0)*well_rho*well_g
+numdays = 1000
+tstop = numdays * 86400 -- 100 days
 
-local trench2D =
+local lens =
 {
   -- The domain specific setup
   domain =
   {
     dim = 2,
-    grid = "grids/trench2D.ugx",
+    grid = "grids/lens.ugx",
     numRefs = ARGS.numRefs,
     numPreRefs = ARGS.numPreRefs,
   },
@@ -36,59 +36,58 @@ local trench2D =
       thetaS = 0.396, thetaR = 0.131,
       alpha = 0.423/rhog, n = 2.06,
       Ksat = 0.0496/86400},
-
-    { uid = "@Clay",
-      type = "vanGenuchten",
-      thetaS = 0.446, thetaR = 0.0,
-      alpha = 0.152/rhog, n = 1.17,
-      Ksat = 8.2e-4/86400},
-
-    { uid = "@fictitious",
-      type = "vanGenuchten",
-      thetaS = 0.65, thetaR = 0,
-      alpha = 2.5/rhog, n = 2.5,
-      Ksat = 1/86400}
   },
 
   flow =
   {
     boussinesq = false,
 
-    gravity = Trench2D_g,       -- [m s^{-2}]
+    gravity = well_g,      -- [ m s^{-2}], must be negative!
     density =
-    { type = "ideal",           -- density function ["linear", "exp", "ideal"]
-      min = Trench2D_rho,       -- [ kg m^{-3} ] water density
-      max = 1025.0,             -- [ kg m^{-3} ] saltwater density
+    { type = "ideal",         -- density function ["linear", "exp", "ideal"]
+      min = well_rho,      -- [ kg m^{-3} ] water density
+      max = 1025.0,           -- [ kg m^{-3} ] saltwater density
     },
-    diffusion   = 18.8571e-6,   -- [m^2/s]
+    diffusion   = 18.8571e-6 -- [ m^2/s ]
   },
-   medium =
-   {
-      {   subsets = {"Inner"},
-          porosity = "@SiltLoam", -- uid of a material or number
-          saturation =
-          { type = "vanGenuchten",
-            value = "@SiltLoam",
-          },
-          conductivity =
-          { type  = "vanGenuchten",
-            value   = "@SiltLoam",
-          },
-      },
+  medium =
+  {
+     {   subsets = {"Inner"},
+         porosity = "@SiltLoam", -- uid of a medium defined under parameter or number
+         saturation =
+         { type = "vanGenuchten",
+           value = "@SiltLoam",
+         },
+         conductivity =
+         { type  = "vanGenuchten",
+           value   = "@SiltLoam",
+         },
+     },
+ },
+  sources =
+  {
+    {cmp = "p", strength = "pump", subset = "Well", coord = {1.0, 1.5}, substances = {cmp = "c"}}
   },
 
-  initial=
-   {
-       { cmp = "p", value = "Trench2DPressureStart"},
-       { cmp = "c", value = 0}
-   },
+  initial =
+  {
+    { cmp = "c", value = 1.0 },
+    { cmp = "p", value = "WellPressureStart" },
+  },
 
   boundary =
   {
-     {cmp = "p", type = "dirichlet", bnd = "Trench", value = "Trench2DDrainagePressureBoundary"},
-     {cmp = "p", type = "dirichlet", bnd = "Aquifer", value = "Trench2DAquiferBoundary" },
-     {cmp = "c", type = "dirichlet", bnd = "Trench", value = 1},
-     {cmp = "c", type = "dirichlet", bnd = "Aquifer", value = 0},
+    -- Top
+    {cmp = "p", type = "flux", bnd = "Top", inner="Inner", value = -0.001},
+    {cmp = "c", type = "dirichlet", bnd = "Top", value = 0.0},
+
+    -- Sea
+    {cmp = "p", type = "dirichlet", bnd = "Sea", value = "WellSeaBoundary" },
+    {cmp = "c", type = "dirichlet", bnd = "Sea", value = 1.0},
+
+    -- Bottom
+    {cmp = "p", type = "dirichlet", bnd = "Bottom", value = "WellSeaBoundary"},
+    {cmp = "c", type = "dirichlet", bnd = "Bottom", value = 1.0},
   },
 
   linSolver =
@@ -116,10 +115,10 @@ local trench2D =
     control	= "limex",
     start 	= 0.0,				      -- [s]  start time point
     stop	= tstop,			        -- [s]  end time point
-    max_time_steps = 200,		  -- [1]	maximum number of time steps
-    dt		= 43200,		          -- [s]  initial time step
-    dtmin	= ARGS.dt,	          -- [s]  minimal time step
-    dtmax	= tstop/5,	            -- [s]  maximal time step
+    max_time_steps = 10000,		  -- [1]	maximum number of time steps
+    dt		= 1,		          -- [s]  initial time step
+    dtmin	= 0.001,	          -- [s]  minimal time step
+    dtmax	= tstop/10,	            -- [s]  maximal time step
     dtred	= 0.5,			          -- [1]  reduction factor for time step
     tol 	= 1e-2,
   },
@@ -133,24 +132,20 @@ local trench2D =
 }
 
 
-function Trench2DDrainagePressureBoundaryTime(x, y, t, tD)
-  if (t <= tD) then
-    return true, (2.2*t / tD - 2.0) * 1025.0 * 9.81
-  else
-    return true, 0.2 * 1025.0 * 9.81
-  end
-end
-
-function Trench2DDrainagePressureBoundary(x, y, t)
-  return Trench2DDrainagePressureBoundaryTime(x, y, t, 86400)
-end
-
-function Trench2DAquiferBoundary(x, y, t)
+function WellSeaBoundary(x, y, t)
   return true, (1.0 - y) * rhog
 end
 
-function Trench2DPressureStart(x, y, t)
+function WellPressureStart(x, y, t)
   return (1.0 - y) * rhog
 end
 
-return trench2D
+function pump(x, y, t)
+  if (t > 10*86400) then
+    return -0.001
+  else
+    return 0.0
+  end
+end
+
+return lens

@@ -21,14 +21,14 @@ local levee2D =
     { uid = "@Clay",
       type = "vanGenuchten",
       thetaS = 0.446, thetaR = 0.0,
-      alpha = 0.152, n = 1.17,
-      Ksat = 0.00432},
+      alpha = 0.152/rhog, n = 1.17,
+      Ksat = 0.00432/86400},
 
     { uid = "@Sand",
       type = "vanGenuchten",
       thetaS = 0.37, thetaR = 0.043,
-      alpha = 0.087, n = 1.58,
-      Ksat = 0.02592},
+      alpha = 0.087/rhog, n = 1.58,
+      Ksat = 0.02592/86400},
   },
 
   flow =
@@ -40,11 +40,6 @@ local levee2D =
     { type = "ideal",         -- density function ["linear", "exp", "ideal"]
       min = levee2D_rho,      -- [ kg m^{-3} ] water density
       max = 1025,           -- [ kg m^{-3} ] saltwater density
-    },
-
-    viscosity =
-    { type = "const",          -- viscosity function ["const", "real"]
-      mu0 = 1          -- [ Pa s ]
     },
     diffusion   = 18.8571e-6  -- [ m^2/s ]
   },

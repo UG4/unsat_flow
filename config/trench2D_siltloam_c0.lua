@@ -22,8 +22,8 @@ local trench2D =
     { uid = "@SiltLoam",
       type = "vanGenuchten",
       thetaS = 0.396, thetaR = 0.131,
-      alpha = 0.423, n = 2.06,
-      Ksat = 0.0496},
+      alpha = 0.423/rhog, n = 2.06,
+      Ksat = 0.0496/86400},
   },
 
   flow =
@@ -35,11 +35,6 @@ local trench2D =
     { type = "ideal",           -- density function ["linear", "exp", "ideal"]
       min = Trench2D_rho,       -- [ kg m^{-3} ] water density
       max = 1025.0,             -- [ kg m^{-3} ] saltwater density
-    },
-
-    viscosity =
-    { type = "const",            -- viscosity function ["const", "real"]
-      mu0 = 1.002e-3            -- [ kg m^{-3} ]
     },
     diffusion   = 18.8571e-6,   -- [m^2/s]
   },

@@ -43,21 +43,18 @@ local well3D =
     { uid = "@Silt",
       type = "vanGenuchten",
       thetaS = 0.396, thetaR = 0.131,
-      alpha = 0.423/rhog, n = 2.06, 
-      Ksat = 1.0},--4.96e-1 -- }, 
+      alpha = 0.423/rhog, n = 2.06},--4.96e-1 -- }, 
     
     { uid = "@Clay",  -- modified n
       type = "vanGenuchten",
       alpha = 0.152/rhog, n = 3.06,  
-      thetaS = 0.446, thetaR = 0.1, 
-      Ksat= 1.0,},  --KSat= kappa/mu*rho*g   <=> kappa = Ksat*mu/(rho*g) 
+      thetaS = 0.446, thetaR = 0.1},  --KSat= kappa/mu*rho*g   <=> kappa = Ksat*mu/(rho*g) 
 
     { uid = "@Exponential", 
       type = "exp",
       pentry = rhog,
       alpha = 1e+1, beta = 0.1*1e+1, -- 0.0, --2e+1, -- TODO: Storativity?
-      thetaR = 1e-6, thetaS = 0.1, 
-      Ksat= 1.0,},  
+      thetaR = 1e-6, thetaS = 0.1},  
 
       
   },
