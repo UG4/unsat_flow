@@ -136,7 +136,6 @@ function ProblemDisc:CreateElemDisc(subdom, medium)
 
     -- fluidStorage:add(porosity*density, saturation) -- INSERT: saturation  or 1.0
     fluidStorage:add(volufrac, density)
-
     fluidFlux:add(density, DarcyVelocity)
 
     -- oberbeck-boussinesq approximation
@@ -312,13 +311,9 @@ function ProblemDisc:assert_richards_parameters(medium)
 
     assert(cuid == suid, "conductivity and saturation must be defined for the same medium")
 
-    if type(porosity) ~= "string" then
-        local thetaS = self:lookup(cuid, "thetaS")
-        assert(porosity == thetaS, "porosity must be equal to saturated water content")
-    end
 
     local Ksat = self:lookup(cuid, "Ksat")
-
+    
     local case1 = not Ksat and (medium.permeability ~= nil and self.problem.flow.viscosity ~= nil)
     local case2 = Ksat and (medium.permeability == nil and self.problem.flow.viscosity == nil)
     print("case1: " .. tostring(case1))

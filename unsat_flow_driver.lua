@@ -198,12 +198,13 @@ else
 
   local concErrorEst = CompositeGridFunctionEstimator()
   -- concErrorEst:add(weightedMetricSpace)
-  -- concErrorEst:add(spaceC)
+  --concErrorEst:add(spaceC)
+  -- Original:
   concErrorEst:add(spaceP)
 
 
   limex:add_error_estimator(concErrorEst)
-  limex:set_tolerance(1e-3)
+  limex:set_tolerance(problem.time.tol)
   limex:set_stepsize_safety_factor(0.8)
   limex:set_time_step(problem.time.dt)
   limex:set_dt_min(problem.time.dtmin)
@@ -211,6 +212,7 @@ else
   limex:set_increase_factor(10.0)
   --limex:enable_matrix_cache()
   limex:disable_matrix_cache()
+  limex:set_conservative(true)
 
   -- Debugging LIMEX.
 
@@ -257,9 +259,14 @@ else
   local luaObserver = LuaCallbackObserver()
   function luaPostProcess(step, time, currdt)
     print("")
-    print("Integral over salt mass fraction: " .. Integral(disc.CompositeSaltMass, disc.u))
-    print("")
-    print("Integral over fluid phase volume: " .. Integral(disc.CompositeSaturation, disc.u))
+    print("INT_V00 - Integral over salt mass fraction:\t" .. time .. "\t" .. Integral(disc.CompositeVoluFrac, disc.u))
+    print("INT_V01 - Integral over salt mass fraction:\t" .. time .. "\t" .. Integral(disc.CompositeSaltMass, disc.u))
+    print("INT_V02 - Integral over fluid phase volume:\t".. time .. "\t" .. Integral(disc.CompositeSaturation, disc.u))
+    print("INT_S02a - Integral gradp*n (in):\t" .. time .. "\t" .. IntegrateNormalGradientOnManifold(disc.u, "p","Inflow", "Medium" ))
+    print("INT_S02b - Integral gradp*n (out):\t" .. time .. "\t".. IntegrateNormalGradientOnManifold(disc.u, "p","Sea", "Medium" ))
+
+    print("INT_S03a - Integral gradc*n (in):\t" .. time .. "\t" .. IntegrateNormalGradientOnManifold(disc.u, "c","Inflow", "Medium" ))
+    print("INT_S03b - Integral gradc*n (out):\t" .. time .. "\t".. IntegrateNormalGradientOnManifold(disc.u, "c","Sea", "Medium" ))
     print("")
     print(">>>> TimeStep: " .. step .. "," .. time .. "," .. currdt .. " <<<<")
     print("")
