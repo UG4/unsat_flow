@@ -1,4 +1,4 @@
--- config for modelling a drainage trench with constant groundwater flow
+-- Freshwater lens benchmark modelled after Stoeckl et al. A new numerical benchmark of a freshwater lens (2016)
 
 lens_rho = 997
 lens_rho_c = 1021
@@ -42,7 +42,7 @@ local lens =
   },
   medium =
   {
-     {   subsets = {"inner"},
+     {   subsets = {"Inner"},
          porosity = "@Material", -- uid of a medium defined under parameter or number
          saturation =
          { type = "vanGenuchten",
@@ -64,12 +64,12 @@ local lens =
   boundary =
   {
     -- Top
-    {cmp = "p", type = "neumann", bnd = "top", inner="inner", value = "top_boundary"},
-    {cmp = "c", type = "dirichlet", bnd = "top", value = 0.0},
+    {cmp = "p", type = "neumann", bnd = "Top", inner="Inner", value = "top_boundary"},
+    {cmp = "c", type = "dirichlet", bnd = "Top", value = 0.0},
 
     -- Left
-    {cmp = "p", type = "dirichlet", bnd = "left", value = "left_boundary"},
-    {cmp = "c", type = "dirichlet", bnd = "left", value = 1.0},
+    {cmp = "p", type = "dirichlet", bnd = "Left", value = "left_boundary"},
+    {cmp = "c", type = "dirichlet", bnd = "Left", value = 1.0},
   },
 
   linSolver =
@@ -120,7 +120,8 @@ function HydroPressure(x, y)
 end
 
 function top_boundary(x, y, t, si)
-  if t > T0 then
+  -- Shoreline segment of 1cm between 0.5m and 0.51m
+  if t > T0 or x < 0.51 then
     return false, 0.0
   else
     return true, 0.046/86400 -- [m^3/s]
