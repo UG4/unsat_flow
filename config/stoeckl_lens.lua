@@ -24,7 +24,7 @@ local lens =
       type = "vanGenuchten",
       thetaS = 0.39, thetaR = 0.1,
       alpha = 0.423/rhog, n = 2.06,
-      Ksat = 4.5e-3}
+      Ksat = 4.1e-3}
   },
 
   flow =
@@ -65,7 +65,7 @@ local lens =
   {
     -- Top
     {cmp = "p", type = "neumann", bnd = "Top", inner="Inner", value = "top_boundary"},
-    {cmp = "c", type = "dirichlet", bnd = "Top", value = 0.0},
+    {cmp = "c", type = "dirichlet", bnd = "Top", value = "top_boundary_c"},
 
     -- Left
     {cmp = "p", type = "dirichlet", bnd = "Left", value = "left_boundary"},
@@ -121,12 +121,21 @@ end
 
 function top_boundary(x, y, t, si)
   -- Shoreline segment of 1cm between 0.5m and 0.51m
-  if t > T0 or x < 0.51 then
+  if t >= T0 or x <= 0.51 then
     return false, 0.0
   else
-    return true, 0.046/86400 -- [m^3/s]
+    return true, 1.333e-5 -- [m^3/s]
   end
 end
+
+function top_boundary_c(x, y, t, si)
+  if t >= T0 or x <= 0.51 then
+    return false, 1.0
+  else
+    return true, 0.0
+  end
+end
+
 
 function left_boundary(x, y, t, si)
   return true, y * lens_rho_c * lens_g 
