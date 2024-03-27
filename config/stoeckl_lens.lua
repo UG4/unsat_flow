@@ -64,7 +64,7 @@ local lens =
   boundary =
   {
     -- Top
-    {cmp = "p", type = "neumann", bnd = "Top", inner="Inner", value = "top_boundary"},
+    {cmp = "p", type = "neumann", bnd = "Top", inner="Inner", value = 1.333e-5*lens_rho},
     {cmp = "c", type = "dirichlet", bnd = "Top", value = "top_boundary_c"},
 
     -- Left

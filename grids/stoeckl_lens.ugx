@@ -2,7 +2,7 @@
 <grid name="defGrid">
 	<vertices coords="3">0 0 -2.77555756156289135e-17 0.5 0.299999999999999989 0 0.900000000000000022 0 0 0.900000000000000022 0.299999999999999989 0 0.450000000000000011 0 -1.38777878078144568e-17</vertices>
 	<edges>1 0 2 3 3 1 2 1 0 4 4 2 4 1</edges>
-	<triangles>1 2 3 1 2 4 1 4 0</triangles>
+	<triangles>3 1 2 1 4 2 1 0 4</triangles>
 	<subset_handler name="defSH">
 		<subset name="Inner" color="0.588235 0.588235 1 1" state="393216">
 			<edges>3 6</edges>
@@ -29,7 +29,7 @@
 		<subset name="fixed" color="1 1 1 1" state="0"/>
 	</subset_handler>
 	<selector name="defSel">
-		<vertices>3 1</vertices>
+		<faces>2 1 1 1 0 1</faces>
 	</selector>
 	<projection_handler name="defPH" subset_handler="0">
 		<default type="default">0 0</default>
