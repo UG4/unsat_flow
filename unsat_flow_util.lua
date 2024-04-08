@@ -282,7 +282,7 @@ function ProblemDisc:CreateDomainDisc(approxSpace)
             print("Added Dirichlet Boundary with value " .. v.value .. " for " .. v.cmp .. " on subset " .. v.bnd)
         end
 
-        if v.type == "flux" then
+        if v.type == "flux" or v.type =="neumann" then
             -- Neumann-type
             neumannBnd[v.cmp] = neumannBnd[v.cmp] or NeumannBoundary(v.cmp, "fv1")
             neumannBnd[v.cmp]:add(v.value, v.bnd, v.inner)

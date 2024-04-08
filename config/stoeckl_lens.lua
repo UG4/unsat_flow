@@ -4,8 +4,7 @@ lens_rho = 997
 lens_rho_c = 1021
 lens_g = -9.81 -- must be negative!
 rhog = (-1.0)*lens_rho*lens_g
-numdays = 1000
-tstop = numdays * 86400 -- 100 days
+tstop = 24 * 60 * 60 -- 1 day
 
 local lens =
 {
@@ -51,7 +50,9 @@ local lens =
          conductivity =
          { type  = "vanGenuchten",
            value   = "@Material",
-         }
+         },
+         alphaL = 5e-4,
+         alphaT = 0.1*5e-4,
      },
  },
 
@@ -64,7 +65,7 @@ local lens =
   boundary =
   {
     -- Top
-    {cmp = "p", type = "neumann", bnd = "Top", inner="Inner", value = 1.333e-5*lens_rho},
+    {cmp = "p", type = "flux", bnd = "Top", inner="Inner", value = "top_boundary"},
     {cmp = "c", type = "dirichlet", bnd = "Top", value = "top_boundary_c"},
 
     -- Left
@@ -113,7 +114,7 @@ local lens =
 
 }
 
-T0 = 200*60 -- phase switch, after quasi steady state
+T0 = 6*60*60 -- phase switch, after quasi steady state, 6h
 
 function HydroPressure(x, y)
   return y * lens_rho_c * lens_g
@@ -124,13 +125,13 @@ function top_boundary(x, y, t, si)
   if t >= T0 or x <= 0.51 then
     return false, 0.0
   else
-    return true, 1.333e-5 -- [m^3/s]
+    return true, -1.333e-5*lens_rho -- [m^3/s]
   end
 end
 
 function top_boundary_c(x, y, t, si)
   if t >= T0 or x <= 0.51 then
-    return false, 1.0
+    return false, 0.0
   else
     return true, 0.0
   end
