@@ -93,7 +93,7 @@ function ProblemDisc:CreateElemDisc(subdom, medium)
         -- Darcy Velocity will be: $\vec q := -k_r*K/mu (\grad p - \rho \vec g)$
         local permeability = medium.permeability
         local khyd = ScaleAddLinkerMatrix()
-        khyd:add(conductivity, -1.0*permeability) -- Here Ksat must be 1.0!
+        khyd:add(conductivity, permeability) -- Here Ksat must be 1.0!
 
         -- ##### Viscosity #####
         local viscosity = self:viscosity()
@@ -112,7 +112,7 @@ function ProblemDisc:CreateElemDisc(subdom, medium)
         local permeability = ScaleAddLinkerMatrix()
         permeability:add(conductivity, 1.0)
         DarcyVelocity:set_permeability(permeability)
-        DarcyVelocity:set_viscosity(density * -1.0*self.problem.flow.gravity)
+        DarcyVelocity:set_viscosity(density * math.abs(self.problem.flow.gravity))
     end
 
     DarcyVelocity:set_pressure_gradient(elemDisc["flow"]:gradient())
@@ -311,13 +311,12 @@ function ProblemDisc:assert_richards_parameters(medium)
 
     assert(cuid == suid, "conductivity and saturation must be defined for the same medium")
 
-
     local Ksat = self:lookup(cuid, "Ksat")
     
-    local case1 = not Ksat and (medium.permeability ~= nil and self.problem.flow.viscosity ~= nil)
-    local case2 = Ksat and (medium.permeability == nil and self.problem.flow.viscosity == nil)
-    print("case1: " .. tostring(case1))
-    print("case2: " .. tostring(case2))
+    local case1 = (Ksat == nil) and (medium.permeability ~= nil and self.problem.flow.viscosity ~= nil)
+    local case2 = (Ksat ~= nil) and (medium.permeability == nil and self.problem.flow.viscosity == nil)
+    print("Permeability and Viscosity are given, but not hydraulic conductivity: " .. tostring(case1))
+    print("Only hydraulic conductivity is given: " .. tostring(case2))
     assert(case1 or case2, "either Ksat or permeability and viscosity must be defined")
 end
 

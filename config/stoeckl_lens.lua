@@ -4,7 +4,11 @@ lens_rho = 997
 lens_rho_c = 1021
 lens_g = -9.81 -- must be negative!
 rhog = (-1.0)*lens_rho*lens_g
-tstop = 24 * 60 * 60 -- 1 day
+
+recharge_rate = util.GetParamNumber("--recharge", -1.333e-5)
+total_time = util.GetParamNumber("--hours", 24, "Total simulation time in hours")
+
+tstop = total_time * 60 * 60 -- 1 day
 
 local lens =
 {
@@ -22,8 +26,7 @@ local lens =
     { uid = "@Material",
       type = "vanGenuchten",
       thetaS = 0.39, thetaR = 0.1,
-      alpha = 0.423/rhog, n = 2.06,
-      Ksat = 4.1e-3}
+      alpha = 0.423/rhog, n = 2.06}
   },
 
   flow =
@@ -36,8 +39,12 @@ local lens =
       min = lens_rho,      -- [ kg m^{-3} ] water density
       max = lens_rho_c,           -- [ kg m^{-3} ] saltwater density
     },
-    diffusion   = 10e-9, -- [ m^2/s ]
-    upwind = "full"
+    viscosity =
+    { type = "const",         -- viscosity function ["const", "real"]
+      mu0 = 1e-3              -- [ Pa s ]
+    },
+    diffusion   = 1.0e-9, -- [ m^2/s ]
+    upwind = "partial"
   },
   medium =
   {
@@ -51,8 +58,9 @@ local lens =
          { type  = "vanGenuchten",
            value   = "@Material",
          },
-         alphaL = 5e-4,
-         alphaT = 0.1*5e-4,
+         --alphaL = 5e-4,
+         --alphaT = 0.1*5e-4,
+         permeability = 4.6e-10
      },
  },
 
@@ -117,7 +125,7 @@ local lens =
 T0 = 6*60*60 -- phase switch, after quasi steady state, 6h
 
 function HydroPressure(x, y)
-  return y * lens_rho_c * lens_g
+  return (y - 0.3) * lens_rho_c * lens_g
 end
 
 function top_boundary(x, y, t, si)
@@ -125,7 +133,7 @@ function top_boundary(x, y, t, si)
   if t >= T0 or x <= 0.51 then
     return false, 0.0
   else
-    return true, -1.333e-5*lens_rho -- [m^3/s]
+    return true, recharge_rate*lens_rho -- [m^3/s]
   end
 end
 
@@ -139,7 +147,7 @@ end
 
 
 function left_boundary(x, y, t, si)
-  return true, y * lens_rho_c * lens_g 
+  return true, HydroPressure(x, y)
 end
 
 return lens
