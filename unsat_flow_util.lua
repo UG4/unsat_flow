@@ -120,7 +120,7 @@ function ProblemDisc:CreateElemDisc(subdom, medium)
     DarcyVelocity:set_gravity(self.gravity)
 
     local volufrac = ScaleAddLinkerNumber() -- theta
-    volufrac:add(porosity, saturation)
+    volufrac:add(saturation, 1.0)
 
     -----------------------------------------
     -- Equation [1]
