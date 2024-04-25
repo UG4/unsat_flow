@@ -248,7 +248,7 @@ function ProblemDisc:CreateDomainDisc(approxSpace)
         for i, mySource in ipairs(self.problem.sources) do -- for all sources
             -- Read Vector.
             local mycoord = Vec()
-            print(mySource)
+
             mycoord:set_coord(0, mySource.coord[1])
             mycoord:set_coord(1, mySource.coord[2])
             if (dim == 3) then mycoord:set_coord(2, mySource.coord[3]) end
@@ -257,16 +257,18 @@ function ProblemDisc:CreateDomainDisc(approxSpace)
             elemDisc:add_source(mySource.strength, mycoord)
             self.domainDisc:add(elemDisc)
 
-            print("Added point source for " .. mySource.cmp .. " at ");
-            print(mySource.strength)
+            print("Added point source for " .. mySource.cmp .. " at ")
             print(mySource.coord)
+            print("with strength " .. mySource.strength)
 
             -- Add source for substances
-            print(mySource.substances)
             for j, mySub in ipairs(mySource.substances) do -- for all components
                 local elemDiscSub = DiracSourceDisc(mySub.cmp, mySource.subset)
                 elemDiscSub:add_transport_sink(mySource.strength)
                 self.domainDisc:add(elemDiscSub)
+                print("Added point source for " .. mySub.cmp .. " at ")
+                print(mySource.coord)
+                print("with strength " .. mySource.strength)
             end
         end
     end

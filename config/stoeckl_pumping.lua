@@ -14,13 +14,13 @@ params.freshWaterDensity = 996.9
 params.saltWaterDensity = 1020.9
 params.gravity = -9.981
 
-params.pumping_rate = 1 / (24 * 60 * 60) / 0.05 -- 1 [m3/d] spread along the entire width
+params.pumping_rate = 1 / 86400 * params.freshWaterDensity -- 1 [m3/d] spread along the entire width
 params.pumping_time = 135 -- [s], after that the pumping is switched off
 
 -- The fresh water recharge through the right boundary:
 -- 0.086 [m3/d] (cf. the paper, p. 3, line 18 from below), converted to [kg/s] and
 -- spread along the entire height (so that the integral provides the same mass)
-params.freshflux = 0.086 / (24 * 60 * 60) * params.freshWaterDensity / 0.2 -- [kg/s]
+params.freshflux = 0.086 / 86400 * params.freshWaterDensity -- [kg/s]
 
 rhog = (-1.0)*params.freshWaterDensity*params.gravity
 
@@ -34,7 +34,7 @@ end
 
 function pumping_sink(x, y, t, si)
 	if t < params.pumping_time then
-		return - params.pumping_rate
+		return params.pumping_rate
 	end
 	return 0
 end
@@ -68,14 +68,8 @@ local henry =
       min = params.freshWaterDensity,	-- [ kg m^{-3} ]
       max = params.saltWaterDensity,	-- [ kg m^{-3} ]
     },
-
-    viscosity =
-    { type = "const",          -- viscosity function ["const", "real"]
-      mu0 = 0.00089                  -- [ Pa s ]
-    },
     diffusion   = 1e-9, -- [ m^2/s ]
-    upwind = "partial",
-    boussinesq = false
+    upwind = "full",
   },
    medium =
    {
@@ -94,8 +88,7 @@ local henry =
 
   sources =
   {
-    {cmp = "p", value = "pumping_sink", subset = "pump", x = 0.6, y = 0.05},
-    {cmp = "c", transport = "pumping_sink", subset = "pump", x = 0.6, y = 0.05},
+    {cmp = "p", strength = "pumping_sink", subset = "pump", coord = {0.6, 0.05}, substances = {{cmp = "c"}}},
   },
 
   initial =
@@ -111,7 +104,7 @@ local henry =
     { cmp = "p", type = "dirichlet", bnd = "salt", value = "HydroPressure" },
 
     -- Land
-    { cmp = "p", type = "flux", bnd = "fresh", inner = "inner", value = params.freshflux }, -- approx. 0.96 [m3/d]
+    { cmp = "p", type = "flux", bnd = "fresh", inner = "inner", value = - params.freshflux }, -- approx. 0.96 [m3/d]
     { cmp = "c", type = "dirichlet", bnd = "fresh", value = 0.0 }
   },
 
