@@ -11,8 +11,6 @@ ug_load_script("../scripts/util/solver_util.lua")
 
 util.CheckAndPrintHelp("Unsaturated density flow problem");
 
-
-
 -- Parameters every problem uses
 -- problem specific parameters are in the config file
 ARGS =
@@ -20,63 +18,66 @@ ARGS =
   problemID  = util.GetParam("--problem-id", "trench2D"),
   numPreRefs = util.GetParamNumber("--numPreRefs", 1, "number of refinements before parallel distribution"),
   numRefs    = util.GetParamNumber("--numRefs", 4, "number of refinements after parallel distribution"),
-  dt         = util.GetParamNumber("--dt", 0.001),   -- time step length
-  newton     = util.HasParamOption("--newton", false),
   adaptive   = util.HasParamOption("--adaptive", false),
 }
 
-if ARGS.adaptive then
-  ug_load_script("./unsat_flow_adaptive.lua")
-end
+function unsatSolve(problemID, numPreRefs, numRefs, adaptive)
+  if adaptive then
+    ug_load_script("./unsat_flow_adaptive.lua")
+  end
 
-local problem = require(ARGS.problemID)
+  local problem
 
-InitUG(problem.domain.dim, AlgebraType("CPU", 1))
+  -- if the problemID is given as string, load the problem from the config file
+  -- if it is given as object, use the object
+  if type(problemID) == "string" then
+    problem = require(problemID)
+  else
+    problem = problemID
+  end
 
-local dom = util.CreateAndDistributeDomain(problem.domain.grid, ARGS.numRefs, ARGS.numPreRefs, {})
+  InitUG(problem.domain.dim, AlgebraType("CPU", 1))
 
--- saves the refined grid
--- SaveGridHierarchyTransformed(dom:grid(), dom:subset_handler(), "refined.ugx", 0.1)
+  local dom = util.CreateAndDistributeDomain(problem.domain.grid, numRefs, numPreRefs, {})
 
-local disc = ProblemDisc:new(problem, dom)
+  -- saves the refined grid
+  -- SaveGridHierarchyTransformed(dom:grid(), dom:subset_handler(), "refined.ugx", 0.1)
 
--- create approximation space.
-local approxSpace = disc:CreateApproxSpace()
+  local disc = ProblemDisc:new(problem, dom)
 
-disc.u = GridFunction(disc.approxSpace)
+  -- create approximation space.
+  local approxSpace = disc:CreateApproxSpace()
 
--- Creating the Domain discretisation for the problem
-local domainDisc = disc:CreateDomainDisc(approxSpace)
+  disc.u = GridFunction(disc.approxSpace)
 
--- vtk output
-disc.vtk = VTKOutput()
-disc:CreateVTKOutput()
-print("Created VTK Output")
+  -- Creating the Domain discretisation for the problem
+  local domainDisc = disc:CreateDomainDisc(approxSpace)
 
--- Initial Data
-disc:SetInitialData(disc.u)
+  -- vtk output
+  disc.vtk = VTKOutput()
+  disc:CreateVTKOutput()
+  print("Created VTK Output")
 
--- Solver Config
-util.solver.defaults.approxSpace = approxSpace
+  -- Initial Data
+  disc:SetInitialData(disc.u)
 
--- Time stepping parameters
-local startTime                  = problem.time.start
-local endTime                    = problem.time.stop
-local dt                         = problem.time.dt
-local dtMin                      = problem.time.dtmin
-local dtMax                      = problem.time.dtmax
-local TOL                        = problem.time.tol
-local dtred                      = problem.time.dtred
+  -- Solver Config
+  util.solver.defaults.approxSpace = approxSpace
 
-local dbgWriter                  = GridFunctionDebugWriter(approxSpace)
-if ARGS.newton then
-  util.SolveNonlinearTimeProblem(disc.u, domainDisc, solver, disc.vtk, ARGS.problemID .. "_",
-    "ImplEuler", 1.0, startTime, endTime, dt, dtMin, dtred)
-else
+  -- Time stepping parameters
+  local startTime                  = problem.time.start
+  local endTime                    = problem.time.stop
+  local dt                         = problem.time.dt
+  local dtMin                      = problem.time.dtmin
+  local dtMax                      = problem.time.dtmax
+  local TOL                        = problem.time.tol
+  local dtred                      = problem.time.dtred
+
+  local dbgWriter                  = GridFunctionDebugWriter(approxSpace)
+
   -- LIMEX time-stepping
   -- Solvers config.
   local nstages = 2
-
   local limexLSolver = {}
   local limexNLSolver = {}
   local limexDomainDisc = {}
@@ -91,8 +92,7 @@ else
     limexDomainDisc[i] = domainDisc
   end
 
-
-  if (not ARGS.adaptive) then
+  if (not adaptive) then
     -- One-step Newton
     local limexConvCheck = ConvCheck(1, 1e-12, 1e-10, true)
     limexConvCheck:set_supress_unsuccessful(true)
@@ -107,10 +107,8 @@ else
     local niConfig = {
       maxLvl = 8, -- largest level
       maxSteps = 3,
-
       rTOL = 1e-4,  -- spatial tolerance
       aTOL = 1e-12, -- spatial tolerance
-
 
       refiner = HangingNodeDomainRefiner(dom),
 
@@ -157,12 +155,9 @@ else
     print(limexDomainDisc)
   end
 
-
   -- LIMEX Configuration
-
   --- descriptor for LIMEX time integrator
   local limexDesc = {
-
     nstages = nstages,
     steps = { 1, 2, 3, 4, 5, 6 },
 
@@ -184,7 +179,6 @@ else
   local limex = util.limex.CreateIntegrator(limexDesc)
   print("...DONE!")
 
-
   local weightedMetricSpace = CompositeSpace()
   --local spaceP = VelEnergyComponentSpace("p", 2, inst.coef.EnergyTensorFlow)
   --local spaceC = L2ComponentSpace("c", 2, inst.coef.Conductivity2)
@@ -195,13 +189,11 @@ else
   weightedMetricSpace:add(spaceP)
   weightedMetricSpace:add(spaceC)
 
-
   local concErrorEst = CompositeGridFunctionEstimator()
   -- concErrorEst:add(weightedMetricSpace)
   --concErrorEst:add(spaceC)
   -- Original:
   concErrorEst:add(spaceP)
-
 
   limex:add_error_estimator(concErrorEst)
   limex:set_tolerance(problem.time.tol)
@@ -222,10 +214,10 @@ else
     limexNLSolver[1]:set_debug(dbgWriter)
   end
 
-  if ARGS.adaptive then
+  if adaptive then
     print(adaptivityUtil)
     local luaobserver = LuaCallbackObserver()
-
+  
     -- work-around (waiting for implementation of SmartPtr forward to lua...)
     function luaAdaptivePostProcess(step, time, currdt)
       print("This is step " .. step)
@@ -249,11 +241,13 @@ else
     limexNLSolver[1]:set_debug(dbgWriter)
   end
 
-    -- Time step observer.
-    local filename = (problem.output.filename) or (ARGS.problemID)
-    local vtkobserver = VTKOutputObserver(problem.output.file..filename..".vtk", disc.vtk)
-    limex:attach_observer(vtkobserver)
-
+  -- Time step observer.
+  local filename = (problem.output.filename) or (problemID)
+  if (filename == nil) then
+    filename = "unsat_flow"
+  end
+  local vtkobserver = VTKOutputObserver(problem.output.file..filename..".vtk", disc.vtk)
+  limex:attach_observer(vtkobserver)
 
   -- post process for saving time step size
   local luaObserver = LuaCallbackObserver()
@@ -283,4 +277,10 @@ else
   limex:apply(disc.u, endTime, disc.u, 0.0)
 
   print("CDELTA=" .. sw:toc())
+end
+
+
+-- Only run if not called from another script
+if (not pcall(debug.getlocal, 4, 1)) then
+  unsatSolve(ARGS.problemID, ARGS.numPreRefs, ARGS.numRefs, ARGS.adaptive)
 end
