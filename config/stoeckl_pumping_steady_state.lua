@@ -4,7 +4,6 @@
 -- Cf. L. Stoeckl, M. Walther, L. K. Morgan, Physical and Numerical Modelling of Post-Pumping Seawater Intrusion, DOI: 10.1155/2019/7191370
 ------------------------------------------------------------------------------------------------
 
-
 params =
 {
 }
@@ -18,7 +17,7 @@ params.phase1_time = 5000 -- 5000s: steady state generation
 params.phase2_time = 135-- 135s: pumping
 params.phase3_time = 5000 -- 5000s: pump shut off
 
-tstop = params.phase1_time + params.phase2_time + params.phase3_time
+tstop = 35000 -- 12 hours
 
 -- The fresh water recharge through the right boundary:
 -- 0.086 [m3/d] (cf. the paper, p. 3, line 18 from below), converted to [kg/s] and
@@ -136,9 +135,9 @@ local henry =
     start 	= 0.0,				      -- [s]  start time point
     stop	= tstop,			        -- [s]  end time point
     max_time_steps = 1000,		  -- [1]	maximum number of time steps
-    dt		= 10,		            -- [s]  initial time step
+    dt		= 100,		            -- [s]  initial time step
     dtmin	= 0.0001,	          -- [s]  minimal time step
-    dtmax	= 100,	          -- [s]  maximal time step
+    dtmax	= 2500,	          -- [s]  maximal time step
     dtred	= 0.5,			          -- [1]  reduction factor for time step
     tol 	= 1e-2,
   },
