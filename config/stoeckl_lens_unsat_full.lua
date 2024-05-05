@@ -5,13 +5,13 @@ lens_rho_c = 1021
 lens_g = -9.81 -- must be negative!
 rhog = (-1.0)*lens_rho*lens_g
 
-recharge_rate = util.GetParamNumber("--recharge", -1.333e-5)
+recharge_rate = util.GetParamNumber("--recharge", -1.8e-5)
 total_time = util.GetParamNumber("--hours", 24, "Total simulation time in hours")
-steady_state = 60*60*10 -- 6 hours to reach steady state
-pump_rate = -1.5e-3 -- 1.0 m^3/day
+steady_state = 60*60*10 -- 10 hours to reach steady state
+pump_rate = -5e-3 -- 1.0 m^3/day
 sea_level = util.GetParamNumber("--sea_level", 0.27, "Sea level in m") -- 0.3 for fully saturated
 
-tstop = total_time * 60 * 60 -- 1 day
+tstop = total_time * 60 * 60
 
 function HydroPressure(x, y)
   return (y - sea_level) * lens_rho_c * lens_g -- phreatic surface at y = 0.4m
@@ -25,7 +25,7 @@ function pumping(x, y, t, si)
   end
 end
 
-function left_boundary(x, y, t, si)
+function shore_boundary(x, y, t, si)
   hp = HydroPressure(x, y)
   if y > sea_level then
     return false, 0.0 -- no flow above sea level
@@ -34,7 +34,7 @@ function left_boundary(x, y, t, si)
   end
 end
 
-function left_boundary_c(x, y, t, si)
+function shore_boundary_c(x, y, t, si)
   if y > sea_level then
     return false, 0.0
   else
@@ -48,7 +48,7 @@ local lens =
   domain =
   {
     dim = 2,
-    grid = "grids/stoeckl_lens_pump.ugx",
+    grid = "grids/stoeckl_lens_pump_full.ugx",
     numRefs = ARGS.numRefs,
     numPreRefs = ARGS.numPreRefs,
   },
@@ -73,7 +73,7 @@ local lens =
       max = lens_rho_c,           -- [ kg m^{-3} ] saltwater density
     },
     diffusion   = 10e-9, -- [ m^2/s ]
-    upwind = "full"
+    upwind = "partial"
   },
   medium =
   {
@@ -102,9 +102,9 @@ local lens =
     {cmp = "p", type = "neumann", bnd = "Top", inner="Inner", value = recharge_rate*lens_rho },
     {cmp = "c", type = "dirichlet", bnd = "Top", value = 0.0 },
 
-    -- Left
-    {cmp = "p", type = "dirichlet", bnd = "Left", value = "left_boundary"},
-    {cmp = "c", type = "dirichlet", bnd = "Left", value = "left_boundary_c"},
+    -- Shoreline
+    {cmp = "p", type = "dirichlet", bnd = "Shore", value = "shore_boundary"},
+    {cmp = "c", type = "dirichlet", bnd = "Shore", value = "shore_boundary_c"},
   },
 
   sources =
