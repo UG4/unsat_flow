@@ -34,9 +34,9 @@ The app is split into a driver and an util script. Problems are described using 
 To start a simulation the driver needs to be executed using the ugshell:
 
 Usage:
-´´´
+```
 ugshell -ex unsat_flow_app/unsat_flow_driver.lua --problem-id "example"
-´´´
+```
 
 ## Arguments
 Several additional arguments can be set:
