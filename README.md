@@ -18,9 +18,6 @@ The first equation models groundwater flow in a porous medium, the second equati
 
 Saturation and hydraulic conductivity are calculated using the van Genuchten Model.
 
-Usage:
-
-ugshell -ex unsat_flow_app/unsat_flow_driver.lua --problem-id "example"
 
 ## Dependencies
 This app depends on the following UG4 plugins: ConvectionDiffusion, LIMEX, Richards.
@@ -36,7 +33,10 @@ Once compiled just place this repository in the apps directory of your UG4 direc
 The app is split into a driver and an util script. Problems are described using configuration scripts. Multiple examples are given in the configs folder. 
 To start a simulation the driver needs to be executed using the ugshell:
 
+Usage:
+´´´
 ugshell -ex unsat_flow_app/unsat_flow_driver.lua --problem-id "example"
+´´´
 
 ## Arguments
 Several additional arguments can be set:
