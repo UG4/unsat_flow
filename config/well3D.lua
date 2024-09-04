@@ -1,6 +1,14 @@
 rho0 = 1000 
 rhog = 9.81 * 1000 -- approx: 1e+4
+
+z0 = 2 -- two meters below ground level.
 --[[
+
+Marc Walther, Dissertation TU Dresden, 2014:
+Variable-Density Flow Processes in Porous Media On Small, Medium and Regional Scales
+https://nbn-resolving.org/urn:nbn:de:bsz:14-qucosa-153365
+
+
 Saturated intrinsic permeability
   $\kappa = 7.6453E-13 m^2$ 
 transmissivity  T = K*d, K= kappa*rho*g/mu, K_approx = kappa * 1e+7
@@ -8,15 +16,31 @@ transmissivity  T = K*d, K= kappa*rho*g/mu, K_approx = kappa * 1e+7
 porosity:
   $\phi = 0.2$; 
 specific storage:
-  $S_s = 1.0E-03$ -- 1/m
+  $ S_s = 1.0E-03$ -- 1/m => S_s*b = 0.01
+  $ S_y = 0.2
   (rho0 *  \gamma) * dp/dt =  drho/dt
       gamma   = S_s / (b \phi g \rho_0}$
   where $\gamma = 5.0968E-08 s^2/m/kg$
   => rho0*gamma  \approx 5E-5 s^2/m^4 
-  => dt(phi*S*rho)/dt \approx (phi*Smax)*drho/dt
+  => d(phi*S*rho)/dt \approx (phi*Smax)*drho/dt
+
+
+cf. https://en.wikipedia.org/wiki/Specific_storage
+
+S = dV/dh * 1/A = S_s*b + S_y
+
+confined:   S = S_s *b
+unconfined: S = S_y
+
+h     : hydraulic head, p = (rho_0 * g) * h
+b     : aquifer thickness (here: 10 m )
+S_s   : specific storage
+S_y   : is the specific yield
+A     : area
+
 --]]
 DAY = 3600*24
-QStrength = 0.125*rho0*15/DAY  -- corresponds to 1/8 of 15 m^3/d
+QStrength = 0.125*rho0*15.0/DAY  -- corresponds to 1/8 of 15 m^3/d
 myRadius = 100.0
 myHeight = 10.0
 
@@ -24,6 +48,7 @@ mySectorArea = (2.0*math.pi*myRadius)*myHeight
 mySectorVol = (math.pi*myRadius*myRadius)*myHeight
 
 print("V="..0.125*mySectorVol)
+print("Q="..QStrength)
 
 local well3D = 
 { 
@@ -34,7 +59,7 @@ local well3D =
     grid = "grids/well3D.ugx",
     numRefs = ARGS.numRefs,
     numPreRefs = ARGS.numPreRefs,
-    neededSubsets = {}
+    -- neededSubsets = {}
   },
 
   -- list of non-linear models => translated to functions
@@ -50,13 +75,12 @@ local well3D =
       alpha = 0.152/rhog, n = 3.06,  
       thetaS = 0.446, thetaR = 0.1},  --KSat= kappa/mu*rho*g   <=> kappa = Ksat*mu/(rho*g) 
 
-    { uid = "@Exponential", 
+    { uid = "@MyExponential", 
       type = "exp",
       pentry = rhog,
-      alpha = 1e+1, beta = 0.1*1e+1, -- 0.0, --2e+1, -- TODO: Storativity?
+      alpha = 1e+1, beta = 0.0, -- 0.0, --2e+1, -- TODO: Storativity?
       thetaR = 1e-6, thetaS = 0.1},  
 
-      
   },
   
   flow = 
@@ -76,6 +100,9 @@ local well3D =
     { type = "const",      -- viscosity function ["const", "real"] 
       mu0 = 1e-3        -- [ kg m^{-3} ]  
     },
+
+    diffusion   = 1e-9, -- [ m^2/s ]
+    upwind = "partial"
   },
 
   medium = 
@@ -85,32 +112,38 @@ local well3D =
       porosity = 0.2,
       
       saturation = { 
-          type = "exp",
-          value = "@Exponential"
+        -- type = "vanGenuchten", value = "@Silt"
+        type = "exp", value = "@MyExponential"
       },
       
       conductivity = { 
-        type  = "exp", 
-        value   = "@Exponential"
+        -- type  = "vanGenuchten", value   = "@Silt"
+        type = "exp", value = "@MyExponential"
       },
       
       
       permeability  = 7.6453e-13, --  m^2,  -- constant m^2
         
       -- Salt transport.
-      diffusion   = 1.0e-9,   -- constant 
-      alphaL = 5.0e-3, alphaT = 5.0e-4,  -- dispersion
+      diffusion   = 1.0e-3,   -- constant 
+      -- alphaL = 5.0e-3, alphaT = 5.0e-4,  -- dispersion
+      alphaL = 0.0, alphaT = 0.0,  -- dispersion
     },
   },
 
   sources =
   {
      -- { cmp = "p", subset = "Sink", coord = {0.5, -0.75}, strength = -Qstrength},
+     -- [[ 
      { 
         cmp = "p", subset = "Sink", coord = {0.0, 0.0, -10.0}, 
-        strength = -QStrength, 
-        substances = { { cmp = "c" }, },
+        strength = -QStrength/1.0, 
+        substances = 
+        { 
+          { cmp = "c" },
+        },
      },
+     --]]
   },
 
   initial = 
@@ -121,8 +154,10 @@ local well3D =
 
   boundary = 
   {
-     {cmp = "p", type = "flux", inner = "Aquifer", bnd = "Rim", value = -QStrength/mySectorArea},
+     -- {cmp = "p", type = "flux", inner = "Aquifer", bnd = "Rim", value = -QStrength/mySectorArea},
+     {cmp = "p", type = "dirichlet", bnd = "Rim", value = "Well3D_Hydrostatic"},
      {cmp = "c", type = "dirichlet", bnd = "Rim", value = 0.0},
+     -- {cmp = "c", type = "dirichlet", bnd = "Sink", value = 0.0},
   },
 
   solver =
@@ -174,8 +209,8 @@ local well3D =
       start 	= 0.0,				-- [s]  start time point
       stop	= 200.0*DAY,			-- [s]  end time point
       max_time_steps = 1000,		-- [1]	maximum number of time steps
-      dt		= ARGS.dt*DAY,		-- [s]  initial time step
-      dtmin	= 0.00001 * ARGS.dt*DAY,	-- [s]  minimal time step
+      dt		= 1e-4*ARGS.dt*DAY,		-- [s]  initial time step
+      dtmin	= 1e-14 * ARGS.dt*DAY,	-- [s]  minimal time step
       dtmax	= 10.0*DAY,	-- [s]  maximal time step
       dtred	= 0.1,				-- [1]  reduction factor for time step
       tol 	= 1e-2,
@@ -191,14 +226,20 @@ local well3D =
       freq	= 1, 	-- prints every x timesteps
       binary 	= true,	-- format for vtk file	
       file = "simulations/well3D",
-      data = {"c", "p", "q", "s", "k", "rho"}
+      data = {"c", "p", "q", "s", "k", "rho"},
+      
+      fs_evaluation_points = { 
+        {0.0, 0.0}, {3.125, 0.0}, {9.375, 0.0}, {12.0, 0.0},
+        {18.75, 0.0}, {25.0, 0.0}, {37.5, 0.0}, {50.0, 0.0},
+        {75.0, 0.0}, {100.0, 0.0}
+      }
     }
 }
 
 
--- Some functions (sadly global...)
+-- Some functions (unfortunately a global variable...)
 function Well3D_Hydrostatic(x, y, z, t, si) 
-  return (-1.0-z) * 1000 * 9.81
+  return (-z0-z) * 1000 * 9.81 -- two meters below ground level
 end
 
 
