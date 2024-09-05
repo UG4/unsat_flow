@@ -78,8 +78,20 @@ local well3D =
     { uid = "@MyExponential", 
       type = "exp",
       pentry = rhog,
-      alpha = 1e+1, beta = 0.0, -- 0.0, --2e+1, -- TODO: Storativity?
-      thetaR = 1e-6, thetaS = 0.1},  
+      alpha = 1e+1, -- TODO: Storativity?
+      beta = 0.0, -- 0.0, --2e+1, 
+      thetaR = 1e-6, thetaS = 0.1}, 
+    
+    { uid = "@WaltherSaturation", 
+      type = "const",
+      value = 1e-0
+    }, 
+    
+    { uid = "@WaltherPermeabilty", 
+      type = "const",
+      value = 1e-0
+    },    
+    
 
   },
   
@@ -112,15 +124,12 @@ local well3D =
       porosity = 0.2,
       
       saturation = { 
-        -- type = "vanGenuchten", value = "@Silt"
-        type = "exp", value = "@MyExponential"
+        value = "@MyExponential" -- type = "vanGenuchten", value = "@Silt"
       },
       
-      conductivity = { 
-        -- type  = "vanGenuchten", value   = "@Silt"
-        type = "exp", value = "@MyExponential"
+      conductivity = { -- relative permeabiltiy
+        value = "@MyExponential"  -- type  = "vanGenuchten", value   = "@Silt"
       },
-      
       
       permeability  = 7.6453e-13, --  m^2,  -- constant m^2
         
