@@ -37,6 +37,14 @@ function unsatSolve(problemID, numPreRefs, numRefs, adaptive)
     problem = problemID
   end
 
+  vtools = require("validation")
+  if (vtools and vtools.validate(problem)) then 
+    print ("Problem '".. problemID .. "' validated successfully!")
+  else 
+    print ("Problem '".. problemID .. "' is invalid!")
+    exit() --remove this line, if you prefer to continue with 'invalid' schemes...
+  end
+
   InitUG(problem.domain.dim, AlgebraType("CPU", 1))
 
   local dom = util.CreateAndDistributeDomain(problem.domain.grid, numRefs, numPreRefs, {})
