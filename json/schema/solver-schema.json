@@ -1,7 +1,8 @@
 {
     "$schema": "http://json-schema.org/draft-07/schema#",
+    "$id": "https://ug4.org/apps/unsat_flow/json/schema/solver-schema.json",
     "type": "object",
-    "description": "Configuration of the solver."
+    "description": "Configuration of the solver.",
     "properties": {
         "type": { "type": "string" },
         "lineSearch": {
