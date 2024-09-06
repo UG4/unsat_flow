@@ -1,0 +1,35 @@
+{
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "$id": "https://ug4.org/apps/unsat_flow/json/schema/boundary-schema.json",    
+   
+    "description": "Configuration of boundary conditions.",
+
+    "type": "array",
+    "items": {
+      "type": "object",
+      "properties": {
+        "cmp": {
+          "description": "Component (as given in approximation space)",
+          "type": "string" 
+        },
+        "type": {
+          "description": "Type of boundary condition.",
+          "enum": ["dirichlet", "flux"],
+          "type": "string"
+        },
+        "bnd": { 
+          "description": "Identification of subset",
+          "type": "string" 
+        },
+        "value": {
+          "description": "Actual value (function or number)",
+          "oneOf": [
+              { "type": "string" },
+              { "type": "number" }
+            ]
+          }
+        },
+      "required": ["cmp", "type", "bnd", "value"]
+    }
+    
+}

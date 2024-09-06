@@ -152,28 +152,7 @@
           "required": ["cmp", "value"]
         }
       },
-      "boundary": {
-        "type": "array",
-        "items": {
-          "type": "object",
-          "properties": {
-            "cmp": { "type": "string" },
-            "type": {
-              "description": "Type of boundary condition.",
-              "enum": ["dirichlet", "flux"],
-              "type": "string"
-            },
-            "bnd": { "type": "string" },
-            "value": {
-              "oneOf": [
-                  { "type": "string" },
-                  { "type": "number" }
-                ]
-              }
-            },
-          "required": ["cmp", "type", "bnd", "value"]
-        }
-      },
+      "boundary": { "$ref": "boundary-schema.json"},
       "solver": { "$ref": "solver-schema.json" },
       "time": {
         "type": "object",
