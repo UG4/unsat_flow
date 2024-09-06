@@ -82,8 +82,20 @@ function ProblemDisc:CreateElemDisc(subdom, medium)
 
     self:assert_richards_parameters(medium)
     local RichardsUserData = RichardsUserDataFactory(capillary)
-    conductivity = RichardsUserData:create_conductivity(self.modelMap[medium.conductivity.value])
-    saturation = RichardsUserData:create_saturation(self.modelMap[medium.saturation.value])
+
+    local conductivity = ConstUserNumber(1.0)
+    if (type(medium.conductivity.value) == string) then 
+        conductivity = RichardsUserData:create_conductivity(self.modelMap[medium.conductivity.value])
+    end
+
+    local saturation = nil
+    if (type(medium.saturation.value) == number) then
+        saturation = ConstUserNumber(medium.saturation.value)
+    elseif (type(medium.saturation.value) == string) then
+        saturation = RichardsUserData:create_saturation(self.modelMap[medium.saturation.value])
+    else 
+        saturation = ConstUserNumber(1.0)
+    end
 
     local DarcyVelocity = DarcyVelocityLinker()
     -- to calculate the relative hydraulic conductivity one has to specify either the mediums
@@ -163,8 +175,10 @@ function ProblemDisc:CreateElemDisc(subdom, medium)
     -----------------------------------------
     -- transport convection and diffusion => transport equation
     -- $\partial_t (\Phi \rho_w S_w \omega)
-    -- 		+ \nabla \cdot (\rho_w \omega q - \Phi S_w \rho_w,min D \nabla \omega)
+    -- 		+ \nabla \cdot (\rho_w \omega q - \rho_w,min D \nabla \omega)
     --			= \phi S_w \rho_w \Gamma_w$
+
+    -- where  D = (\Phi S_w) Dmol + Dmech(q)
 
     -- molecular diffusion
     local transportDiffTensor = ScaleAddLinkerMatrix()
@@ -388,6 +402,7 @@ function ProblemDisc:CreateVTKOutput()
     end
 end
 
+-- Create a map for "string" -> model
 function ProblemDisc:CreateModelMap(paramDesc)
     local modelMap = {}
     local mfactory = RichardsModelFactory()
@@ -401,7 +416,7 @@ function ProblemDisc:CreateModelMap(paramDesc)
             print(medium.uid .. ":e->" .. modelMap[medium.uid]:config_string())
         elseif medium.type == "const" then
             modelMap[medium.uid] = medium.value
-            print(medium.uid .. ":c->" .. medium.value)
+            print(medium.uid .. ":c->" .. modelMap[medium.uid])
         end
     end
     return modelMap

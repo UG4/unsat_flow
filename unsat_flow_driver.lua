@@ -19,6 +19,7 @@ ARGS =
   numPreRefs = util.GetParamNumber("--numPreRefs", 1, "number of refinements before parallel distribution"),
   numRefs    = util.GetParamNumber("--numRefs", 4, "number of refinements after parallel distribution"),
   adaptive   = util.HasParamOption("--adaptive", false),
+  dt = util.GetParamNumber("--dt", 0.01, "time step")
 }
 
 function unsatSolve(problemID, numPreRefs, numRefs, adaptive)
@@ -34,6 +35,14 @@ function unsatSolve(problemID, numPreRefs, numRefs, adaptive)
     problem = require(problemID)
   else
     problem = problemID
+  end
+
+  vtools = require("validation")
+  if (vtools and vtools.validate(problem)) then 
+    print ("Problem '".. problemID .. "' validated successfully!")
+  else 
+    print ("Problem '".. problemID .. "' is invalid!")
+    exit() --remove this line, if you prefer to continue with 'invalid' schemes...
   end
 
   InitUG(problem.domain.dim, AlgebraType("CPU", 1))
@@ -191,7 +200,6 @@ function unsatSolve(problemID, numPreRefs, numRefs, adaptive)
 
   local concErrorEst = CompositeGridFunctionEstimator()
   -- concErrorEst:add(weightedMetricSpace)
-  --concErrorEst:add(spaceC)
   -- Original:
   concErrorEst:add(spaceP)
 
@@ -251,7 +259,7 @@ function unsatSolve(problemID, numPreRefs, numRefs, adaptive)
 
   -- post process for saving time step size
   local luaObserver = LuaCallbackObserver()
-  function luaPostProcess(step, time, currdt)
+  function luaPostProcessIntegration(step, time, currdt)
     print("")
     print("INT_V00 - Integral over salt mass fraction:\t" .. time .. "\t" .. Integral(disc.CompositeVoluFrac, disc.u))
     print("INT_V01 - Integral over salt mass fraction:\t" .. time .. "\t" .. Integral(disc.CompositeSaltMass, disc.u))
@@ -267,8 +275,73 @@ function unsatSolve(problemID, numPreRefs, numRefs, adaptive)
     return 0;
   end
 
-  luaObserver:set_callback("luaPostProcess")
+  luaObserver:set_callback("luaPostProcessIntegration")
   limex:attach_observer(luaObserver)
+
+
+
+  
+  ----------------------------------------
+  -- BEGIN phreatic surface observer. 
+  ----------------------------------------
+  local myFSPoints = problem.output.fs_evaluation_points
+  if (myFSPoints and type(myFSPoints) == "table" and #myFSPoints>0 
+      and FSFileMeasurer) then  
+    
+    print("Initializing output for phreatic surface: ")
+    -- Create approx space for level set.
+    lvl = {}
+
+    -- creating an approx space for free surface.
+    lvl.approxSpace  = ApproximationSpace(dom)
+    lvl.approxSpace:add_fct("p", "Lagrange", 1)
+    lvl.approxSpace:init_levels()
+    lvl.approxSpace:init_top_surface()
+    -- lvl.approxSpace:print_statistic()
+
+    -- This is a temporary.
+    lvl.p = GridFunction(lvl.approxSpace)
+    myValueP = GlobalGridFunctionNumberData(disc.u, "p")
+
+    -- Copy values from current solution to auxiliary.
+    -- TODO: Integrate into 'FSFileMeasurer'
+    local dummyObserver = LuaCallbackObserver()
+    function luaPostProcessCopyPhreaticSurface(step, time, currdt)
+      print("")
+      print("Phreatic surface observer:")
+      print(">>>> TimeStep: " .. step .. "," .. time .. "," .. currdt .. " <<<<")
+      Interpolate(myValueP, lvl.p, "p", time)
+      print("")
+    return 0;
+    
+  end 
+
+  -- This is the 'copy' oberver.
+  luaObserver:set_callback("luaPostProcessCopyPhreaticSurface")
+  limex:attach_observer(dummyObserver)
+
+  -- This is the 'real' oberver.
+  surfaceObserver = FSFileMeasurer(lvl.p)
+  surfaceObserver:enable_print_output() -- output 
+  surfaceObserver:enable_step_file_output("phreatic_surface_height")
+  
+  -- Add points.
+  
+  for k,vpoint in pairs(myFSPoints) do  
+    print(vpoint)
+    surfaceObserver:add_measurement_point(vpoint)
+  end
+
+
+  
+
+  limex:attach_observer(surfaceObserver)
+ 
+  end
+  ----------------------------------------  
+  -- END phreatic surface observer.  
+  ----------------------------------------
+
 
   local sw = CuckooClock()
   sw:tic()
