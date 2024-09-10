@@ -46,7 +46,7 @@
               "max": { "type": "number" },
               "w_max": { "type": "number" }
             },
-            "required": ["type", "min", "max", "w_max"]
+            "required": ["type", "min"]
           },
           "viscosity": {
             "type": "object",
