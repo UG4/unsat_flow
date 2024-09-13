@@ -41,7 +41,7 @@ function unsatSolve(problemID, numPreRefs, numRefs, adaptive)
   if (vtools and vtools.validate(problem)) then 
     print ("Problem '".. problemID .. "' validated successfully!")
   else 
-    print ("Problem '".. problemID .. "' is invalid!")
+    print ("Problem '".. problemID .. "' is invalid (or cannot be validated)!")
     exit() --remove this line, if you prefer to continue with 'invalid' schemes...
   end
 
