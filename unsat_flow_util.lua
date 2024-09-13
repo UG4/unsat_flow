@@ -84,17 +84,16 @@ function ProblemDisc:CreateElemDisc(subdom, medium)
     local RichardsUserData = RichardsUserDataFactory(capillary)
 
     local conductivity = ConstUserNumber(1.0)
-    if (type(medium.conductivity.value) == string) then 
+    if (type(medium.conductivity.value) == "string") then 
         conductivity = RichardsUserData:create_conductivity(self.modelMap[medium.conductivity.value])
     end
 
-    local saturation = nil
-    if (type(medium.saturation.value) == number) then
+    local saturation = ConstUserNumber(1.0)
+    print(type(medium.saturation.value))
+    if (type(medium.saturation.value) == "number") then
         saturation = ConstUserNumber(medium.saturation.value)
-    elseif (type(medium.saturation.value) == string) then
+    elseif (type(medium.saturation.value) == "string") then
         saturation = RichardsUserData:create_saturation(self.modelMap[medium.saturation.value])
-    else 
-        saturation = ConstUserNumber(1.0)
     end
 
     local DarcyVelocity = DarcyVelocityLinker()
