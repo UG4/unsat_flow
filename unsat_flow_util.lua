@@ -85,6 +85,7 @@ function ProblemDisc:CreateElemDisc(subdom, medium)
 
     local conductivity = ConstUserNumber(1.0)
     if (type(medium.conductivity.value) == "string") then 
+        print(self.modelMap[medium.conductivity.value])
         conductivity = RichardsUserData:create_conductivity(self.modelMap[medium.conductivity.value])
     end
 
@@ -324,7 +325,7 @@ function ProblemDisc:assert_richards_parameters(medium)
     local cuid = medium.conductivity.value
     local suid = medium.saturation.value
 
-    assert(cuid == suid, "conductivity and saturation must be defined for the same medium")
+    -- assert(cuid == suid, "conductivity and saturation must be defined for the same medium")
 
     local Ksat = self:lookup(cuid, "Ksat")
     

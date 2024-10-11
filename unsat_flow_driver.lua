@@ -22,6 +22,8 @@ ARGS =
   dt = util.GetParamNumber("--dt", 0.01, "time step")
 }
 
+
+print (ARGS.problemID)
 function unsatSolve(problemID, numPreRefs, numRefs, adaptive)
   if adaptive then
     ug_load_script("./unsat_flow_adaptive.lua")
@@ -189,21 +191,32 @@ function unsatSolve(problemID, numPreRefs, numRefs, adaptive)
   print("...DONE!")
 
   local weightedMetricSpace = CompositeSpace()
-  --local spaceP = VelEnergyComponentSpace("p", 2, inst.coef.EnergyTensorFlow)
-  --local spaceC = L2ComponentSpace("c", 2, inst.coef.Conductivity2)
-  local spaceC = L2ComponentSpace("c", 2)
-  --local spaceP = VelEnergyComponentSpace("p", 2, ConstUserMatrix(1.0))
+  --metricSpace = CompositeSpace()
+
+  local spaceP = VelEnergyComponentSpace("p", 2, ConstUserMatrix(1.0))
+  -- local spaceP = VelEnergyComponentSpace("p", 2, inst.coef.EnergyTensorFlow)
+  -- local spaceC = L2ComponentSpace("c", 2, inst.coef.Conductivity2)
+ 
+  local scaleP = 1.0
   local spaceP = H1SemiComponentSpace("p", 2)
+ 
 
-  weightedMetricSpace:add(spaceP)
-  weightedMetricSpace:add(spaceC)
+  local scaleC = 1e+12
+  local spaceC = L2ComponentSpace("c", 2, scaleC)
+  
 
-  local concErrorEst = CompositeGridFunctionEstimator()
-  -- concErrorEst:add(weightedMetricSpace)
-  -- Original:
-  concErrorEst:add(spaceP)
+  -- weightedMetricSpace:add(spaceC)
+  weightedMetricSpace:add(spaceP, scaleP)
 
-  limex:add_error_estimator(concErrorEst)
+
+  local limexErrorEst = CompositeGridFunctionEstimator()
+  limexErrorEst:add(weightedMetricSpace)
+  -- Original: limexErrorEst:add(spaceP)
+
+ 
+
+
+  limex:add_error_estimator(limexErrorEst)
   limex:set_tolerance(problem.time.tol)
   limex:set_stepsize_safety_factor(0.8)
   limex:set_time_step(problem.time.dt)
@@ -211,8 +224,12 @@ function unsatSolve(problemID, numPreRefs, numRefs, adaptive)
   limex:set_dt_max(problem.time.dtmax)
   limex:set_increase_factor(10.0)
   --limex:enable_matrix_cache()
-  limex:disable_matrix_cache()
+  limex:disable_matrix_cache() -- recompute solution.
+  
+  
   limex:set_conservative(true)
+
+
 
   -- Debugging LIMEX.
 
