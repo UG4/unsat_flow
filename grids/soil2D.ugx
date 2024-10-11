@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="utf-8"?>
+<grid name="defGrid">
+	<vertices coords="3">0 5 0 0 0 0 1 0 0 1 5 0 0 2.375 0 1 2.375 0 0 8 0 1 8 0 0 6.5 0 1 6.5 0 1 9 0 0 9 0 1 3.6875 0 0 3.6875 0 1 1.1875 0 0 1.1875 0</vertices>
+	<edges>1 2 3 0 4 5 6 8 9 7 8 9 7 6 10 11 8 0 3 9 11 6 7 10 5 12 12 3 0 13 13 4 2 14 14 5 4 15 15 1 13 12 15 14</edges>
+	<quadrilaterals>7 6 8 9 9 8 0 3 10 11 6 7 3 0 13 12 12 13 4 5 5 4 15 14 14 15 1 2</quadrilaterals>
+	<subset_handler name="defSH">
+		<subset name="saturated" color="0.12549 1 1 1" state="393216">
+			<edges>2 20 21</edges>
+			<faces>3 4 5 6</faces>
+		</subset>
+		<subset name="unsaturated" color="0.6 0.4 0.2 1" state="393216">
+			<edges>5 1</edges>
+			<faces>1 0</faces>
+		</subset>
+		<subset name="soil" color="0.988235 0.00392157 0.027451 1" state="393216">
+			<edges>6</edges>
+			<faces>2</faces>
+		</subset>
+		<subset name="Sides" color="0 0 0 1" state="393216">
+			<vertices>4 0 8 6 5 3 9 7 12 13 14 15</vertices>
+			<edges>8 3 10 9 4 11 12 13 14 15 16 17 18 19</edges>
+		</subset>
+		<subset name="Top" color="1 1 0.0392157 1" state="393216">
+			<vertices>10 11</vertices>
+			<edges>7</edges>
+		</subset>
+		<subset name="Base" color="0.12549 1 1 1" state="393216">
+			<vertices>2 1</vertices>
+			<edges>0</edges>
+		</subset>
+	</subset_handler>
+	<subset_handler name="markSH">
+		<subset name="crease" color="1 1 1 1" state="0"/>
+		<subset name="fixed" color="1 1 1 1" state="0"/>
+	</subset_handler>
+	<selector name="defSel">
+		<vertices>10 1 11 1</vertices>
+	</selector>
+	<projection_handler name="defPH" subset_handler="0">
+		<default type="default">0 0</default>
+	</projection_handler>
+</grid>
+
