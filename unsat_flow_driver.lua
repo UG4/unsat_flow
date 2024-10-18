@@ -2,8 +2,10 @@
 -- Author: Niklas Conen
 
 local myPath = ug_get_current_path()
-package.path = package.path .. ";" .. myPath .. "/config/?.lua;" .. myPath .. "/?.lua;" ..
-myPath .. "/config/trench/?.lua;"
+package.path = package.path .. ";" .. myPath .. "/config/?.lua;" .. myPath .. "/?.lua" 
+-- package.path = package.path .. ";" .. myPath .. "/config/trench/?.lua"
+package.path = package.path .. ";./config/?.lua;./?.lua" 
+print(package.path)
 
 ug_load_script("../scripts/ug_util.lua")
 ug_load_script("./unsat_flow_util.lua")
@@ -44,7 +46,8 @@ function unsatSolve(problemID, numPreRefs, numRefs, adaptive)
     print ("Problem '".. problemID .. "' validated successfully!")
   else 
     print ("Problem '".. problemID .. "' is invalid (or cannot be validated)!")
-    exit() --remove this line, if you prefer to continue with 'invalid' schemes...
+    -- exit() --remove this line, if you prefer to continue with 'invalid' schemes...
+    print(problem)
   end
 
   InitUG(problem.domain.dim, AlgebraType("CPU", 1))
