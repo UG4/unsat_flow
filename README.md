@@ -8,11 +8,11 @@ https://github.com/Nordegraf/unsat_flow
 
 
 # Model
-The Model consists of two coupled PDEs:
+The model consists of two coupled PDEs:
 
 $\frac{\partial}{\partial t} (\phi S_w \rho_w) + \nabla \rho_w \vec{q} = \rho_w \Gamma$
 
-$\frac{\partial}{\partial t}(\phi S_w \rho_w \omega) + \nabla  [\vec{q} \rho_w \omega - \phi S_w \rho_w D \nabla \omega] = \rho_w \Gamma $
+$\frac{\partial}{\partial t}(\phi S_w \rho_w \omega) + \nabla  [\vec{q} \rho_w \omega - \phi S_w \rho_w D \nabla \omega] = \rho_w \omega_0 \Gamma $
 
 The first equation models groundwater flow in a porous medium, the second equation models advection and diffusion of a contaminant.
 
