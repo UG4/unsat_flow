@@ -143,11 +143,10 @@ function ProblemDisc:CreateElemDisc(subdom, medium)
 
     -- fluid storage: \Phi \rho_w S_w
     local fluidStorage = ScaleAddLinkerNumber()
+    fluidStorage:add(volufrac, density)
+
     -- flux \rho_w \vec{v}_w
     local fluidFlux = ScaleAddLinkerVector()
-
-    -- fluidStorage:add(porosity*density, saturation) -- INSERT: saturation  or 1.0
-    fluidStorage:add(volufrac, density)
     fluidFlux:add(density, DarcyVelocity)
 
     -- oberbeck-boussinesq approximation
