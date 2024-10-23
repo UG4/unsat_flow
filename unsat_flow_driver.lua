@@ -21,9 +21,9 @@ ARGS =
   numPreRefs = util.GetParamNumber("--numPreRefs", 1, "number of refinements before parallel distribution"),
   numRefs    = util.GetParamNumber("--numRefs", 4, "number of refinements after parallel distribution"),
   adaptive   = util.HasParamOption("--adaptive", false),
-  dt = util.GetParamNumber("--dt", 0.01, "time step")
+  dt         = util.GetParamNumber("--dt", 0.01, "time step"),
+  validate   = util.HasParamOption("--validate", true),
 }
-
 
 print (ARGS.problemID)
 function unsatSolve(problemID, numPreRefs, numRefs, adaptive)
@@ -42,7 +42,7 @@ function unsatSolve(problemID, numPreRefs, numRefs, adaptive)
   end
 
   vtools = require("validation")
-  if (vtools and vtools.validate(problem)) then 
+  if (validate and vtools and vtools.validate(problem)) then 
     print ("Problem '".. problemID .. "' validated successfully!")
   else 
     print ("Problem '".. problemID .. "' is invalid (or cannot be validated)!")
@@ -274,7 +274,13 @@ function unsatSolve(problemID, numPreRefs, numRefs, adaptive)
   if (filename == nil) then
     filename = "unsat_flow"
   end
-  local vtkobserver = VTKOutputObserver(problem.output.file..filename..".vtk", disc.vtk)
+
+  if problem.output.freq then
+    local vtkobserver = VTKOutputObserver(problem.output.file..filename..".vtk", disc.vtk, problem.output.freq)
+  else
+    local vtkobserver = VTKOutputObserver(problem.output.file..filename..".vtk", disc.vtk)
+  end
+  
   limex:attach_observer(vtkobserver)
 
   -- post process for saving time step size
