@@ -2,9 +2,9 @@
 -- Author: Niklas Conen
 
 local myPath = ug_get_current_path()
-package.path = package.path .. ";" .. myPath .. "/config/?.lua;" .. myPath .. "/?.lua" 
+package.path = package.path .. ";" .. myPath .. "/config/?.lua;" .. myPath .. "/?.lua"
 -- package.path = package.path .. ";" .. myPath .. "/config/trench/?.lua"
-package.path = package.path .. ";./config/?.lua;./?.lua" 
+package.path = package.path .. ";./config/?.lua;./?.lua"
 print(package.path)
 
 ug_load_script("../scripts/ug_util.lua")
@@ -42,9 +42,9 @@ function unsatSolve(problemID, numPreRefs, numRefs, adaptive)
   end
 
   vtools = require("validation")
-  if (validate and vtools and vtools.validate(problem)) then 
+  if (validate and vtools and vtools.validate(problem)) then
     print ("Problem '".. problemID .. "' validated successfully!")
-  else 
+  else
     print ("Problem '".. problemID .. "' is invalid (or cannot be validated)!")
     -- exit() --remove this line, if you prefer to continue with 'invalid' schemes...
     print(problem)
@@ -199,14 +199,12 @@ function unsatSolve(problemID, numPreRefs, numRefs, adaptive)
   local spaceP = VelEnergyComponentSpace("p", 2, ConstUserMatrix(1.0))
   -- local spaceP = VelEnergyComponentSpace("p", 2, inst.coef.EnergyTensorFlow)
   -- local spaceC = L2ComponentSpace("c", 2, inst.coef.Conductivity2)
- 
+
   local scaleP = 1.0
   local spaceP = H1SemiComponentSpace("p", 2)
- 
 
   local scaleC = 1e+12
   local spaceC = L2ComponentSpace("c", 2, scaleC)
-  
 
   -- weightedMetricSpace:add(spaceC)
   weightedMetricSpace:add(spaceP, scaleP)
@@ -215,9 +213,6 @@ function unsatSolve(problemID, numPreRefs, numRefs, adaptive)
   local limexErrorEst = CompositeGridFunctionEstimator()
   limexErrorEst:add(weightedMetricSpace)
   -- Original: limexErrorEst:add(spaceP)
-
- 
-
 
   limex:add_error_estimator(limexErrorEst)
   limex:set_tolerance(problem.time.tol)
@@ -228,11 +223,8 @@ function unsatSolve(problemID, numPreRefs, numRefs, adaptive)
   limex:set_increase_factor(10.0)
   --limex:enable_matrix_cache()
   limex:disable_matrix_cache() -- recompute solution.
-  
-  
+
   limex:set_conservative(true)
-
-
 
   -- Debugging LIMEX.
 
@@ -245,7 +237,7 @@ function unsatSolve(problemID, numPreRefs, numRefs, adaptive)
   if adaptive then
     print(adaptivityUtil)
     local luaobserver = LuaCallbackObserver()
-  
+
     -- work-around (waiting for implementation of SmartPtr forward to lua...)
     function luaAdaptivePostProcess(step, time, currdt)
       print("This is step " .. step)
@@ -280,7 +272,7 @@ function unsatSolve(problemID, numPreRefs, numRefs, adaptive)
   else
     local vtkobserver = VTKOutputObserver(problem.output.file..filename..".vtk", disc.vtk)
   end
-  
+
   limex:attach_observer(vtkobserver)
 
   -- post process for saving time step size
@@ -304,70 +296,32 @@ function unsatSolve(problemID, numPreRefs, numRefs, adaptive)
   luaObserver:set_callback("luaPostProcessIntegration")
   limex:attach_observer(luaObserver)
 
-
-
-  
   ----------------------------------------
-  -- BEGIN phreatic surface observer. 
+  -- BEGIN phreatic surface observer.
   ----------------------------------------
   local myFSPoints = problem.output.fs_evaluation_points
-  if (myFSPoints and type(myFSPoints) == "table" and #myFSPoints>0 
-      and FSFileMeasurer) then  
-    
-    print("Initializing output for phreatic surface: ")
-    -- Create approx space for level set.
-    lvl = {}
+  if (myFSPoints and type(myFSPoints) == "table" and #myFSPoints>0
+      and FSFileMeasurer) then
+    surfaceObserver = FSFileMeasurer(disc.u, "p", 0.0)
+    surfaceObserver:enable_print_output()
+    surfaceObserver:enable_step_file_output("phreatic_surface_height")
+    saltInterfaceObserver = FSFileMeasurer(disc.u, "c", 0.5)
+    saltInterfaceObserver:enable_print_output()
+    saltInterfaceObserver:enable_step_file_output("salt_interface_height")
 
-    -- creating an approx space for free surface.
-    lvl.approxSpace  = ApproximationSpace(dom)
-    lvl.approxSpace:add_fct("p", "Lagrange", 1)
-    lvl.approxSpace:init_levels()
-    lvl.approxSpace:init_top_surface()
-    -- lvl.approxSpace:print_statistic()
+    -- Add points.
+    for k,vpoint in pairs(myFSPoints) do
+      surfaceObserver:add_measurement_point(vpoint)
+      saltInterfaceObserver:add_measurement_point(vpoint)
+    end
 
-    -- This is a temporary.
-    lvl.p = GridFunction(lvl.approxSpace)
-    myValueP = GlobalGridFunctionNumberData(disc.u, "p")
-
-    -- Copy values from current solution to auxiliary.
-    -- TODO: Integrate into 'FSFileMeasurer'
-    local dummyObserver = LuaCallbackObserver()
-    function luaPostProcessCopyPhreaticSurface(step, time, currdt)
-      print("")
-      print("Phreatic surface observer:")
-      print(">>>> TimeStep: " .. step .. "," .. time .. "," .. currdt .. " <<<<")
-      Interpolate(myValueP, lvl.p, "p", time)
-      print("")
-    return 0;
-    
-  end 
-
-  -- This is the 'copy' oberver.
-  luaObserver:set_callback("luaPostProcessCopyPhreaticSurface")
-  limex:attach_observer(dummyObserver)
-
-  -- This is the 'real' oberver.
-  surfaceObserver = FSFileMeasurer(lvl.p)
-  surfaceObserver:enable_print_output() -- output 
-  surfaceObserver:enable_step_file_output("phreatic_surface_height")
-  
-  -- Add points.
-  
-  for k,vpoint in pairs(myFSPoints) do  
-    print(vpoint)
-    surfaceObserver:add_measurement_point(vpoint)
+    limex:attach_observer(surfaceObserver)
+    limex:attach_observer(saltInterfaceObserver)
   end
 
-
-  
-
-  limex:attach_observer(surfaceObserver)
- 
-  end
-  ----------------------------------------  
-  -- END phreatic surface observer.  
   ----------------------------------------
-
+  -- END phreatic surface observer.
+  ----------------------------------------
 
   local sw = CuckooClock()
   sw:tic()
