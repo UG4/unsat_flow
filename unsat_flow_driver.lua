@@ -267,10 +267,11 @@ function unsatSolve(problemID, numPreRefs, numRefs, adaptive)
     filename = "unsat_flow"
   end
 
+  local vtkobserver = nil
   if problem.output.freq then
-    local vtkobserver = VTKOutputObserver(problem.output.file..filename..".vtk", disc.vtk, problem.output.freq)
+    vtkobserver = VTKOutputObserver(problem.output.file..filename..".vtk", disc.vtk, problem.output.freq)
   else
-    local vtkobserver = VTKOutputObserver(problem.output.file..filename..".vtk", disc.vtk)
+    vtkobserver = VTKOutputObserver(problem.output.file..filename..".vtk", disc.vtk)
   end
 
   limex:attach_observer(vtkobserver)
