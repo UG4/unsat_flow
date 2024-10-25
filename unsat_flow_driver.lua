@@ -268,8 +268,8 @@ function unsatSolve(problemID, numPreRefs, numRefs, adaptive)
   end
 
   local vtkobserver = nil
-  if problem.output.freq then
-    vtkobserver = VTKOutputObserver(problem.output.file..filename..".vtk", disc.vtk, problem.output.freq)
+  if problem.output.plot_step then
+    vtkobserver = VTKOutputObserver(problem.output.file..filename..".vtk", disc.vtk, problem.output.plot_step)
   else
     vtkobserver = VTKOutputObserver(problem.output.file..filename..".vtk", disc.vtk)
   end

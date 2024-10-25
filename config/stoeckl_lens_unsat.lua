@@ -141,7 +141,7 @@ local lens =
     dt		= 0.864,		          -- [s]  initial time step
     dtmin	= 0.001,	          -- [s]  minimal time step
     dtmax	= 8.64*1000,	            -- [s]  maximal time step
-    dtred	= 0.3,			          -- [1]  reduction factor for time step
+    dtred	= 0.5,			          -- [1]  reduction factor for time step
     tol 	= 1e-2,
   },
 
@@ -149,6 +149,10 @@ local lens =
   {
     file = "./", -- must be a folder!
     data = {"c", "p", "rho", "mu", "kr", "s", "q", "ff", "tf", "af", "df", "pc", "k"},
+    fs_evaluation_points = {
+      {0.0, 0.0}, {0.1, 0.0}, {0.2, 0.0}, {0.3, 0.0}, {0.4, 0.0}, {0.5, 0.0}, {0.6, 0.0}, {0.7, 0.0}, {0.8, 0.0}, {0.9, 0.0}
+    },
+    plot_step = 3600, -- every hour
   }
 
 }
