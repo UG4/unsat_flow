@@ -142,7 +142,7 @@ local lens =
     dtmin	= 0.001,	          -- [s]  minimal time step
     dtmax	= 8.64*1000,	            -- [s]  maximal time step
     dtred	= 0.5,			          -- [1]  reduction factor for time step
-    tol 	= 1e-2,
+    tol 	= 1e-3,
   },
 
   output =
