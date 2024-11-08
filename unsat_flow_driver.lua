@@ -193,6 +193,7 @@ function unsatSolve(problemID, numPreRefs, numRefs, adaptive)
   local limex = util.limex.CreateIntegrator(limexDesc)
   print("...DONE!")
 
+  local limexErrorEst = CompositeGridFunctionEstimator()
   local weightedMetricSpace = CompositeSpace()
 
   if false then
@@ -202,8 +203,11 @@ function unsatSolve(problemID, numPreRefs, numRefs, adaptive)
     local scaleC = 1e+12
     local spaceC = L2ComponentSpace("c", 2, scaleC)
 
+     -- Here we add to the metric space
     weightedMetricSpace:add(spaceC, scaleC)
     weightedMetricSpace:add(spaceP, scaleP)
+
+    limexErrorEst:add(weightedMetricSpace)
   else
     -- Scale  with || (kappa_0/mu_0) * grad(p) || 
     -- Scale  with || (kappa_0/mu_0) * rho' * g  * w || 
@@ -212,12 +216,15 @@ function unsatSolve(problemID, numPreRefs, numRefs, adaptive)
     local spaceP = VelEnergyComponentSpace("p", 2, ConstUserMatrix(kappa_over_mu_squared))
     local spaceC = L2ComponentSpace("c", 2, kappa_over_mu_squared*(200*10)*200*10)
 
-    weightedMetricSpace:add(spaceP)
     weightedMetricSpace:add(spaceC)
+    weightedMetricSpace:add(spaceP)
+  
+    limexErrorEst:add(weightedMetricSpace)
+    limexErrorEst:use_strict_relative_norms(true)
   end
 
-  local limexErrorEst = CompositeGridFunctionEstimator()
-  limexErrorEst:add(weightedMetricSpace)
+  
+  
 
   limex:add_error_estimator(limexErrorEst)
   limex:set_tolerance(problem.time.tol)
