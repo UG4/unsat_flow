@@ -193,6 +193,7 @@ function ProblemDisc:CreateElemDisc(subdom, medium)
     elemDisc["transport"]:set_mass_scale(fluidStorage) -- * w
     elemDisc["transport"]:set_velocity(fluidFlux)
     elemDisc["transport"]:set_diffusion(transportDiffTensor)
+    elemDisc["transport"]:set_partial_velocity(1)   -- 1: kein Nachdifferenzieren der Geschwindigkeit
     
     if self.problem.flow.upwind == "full" then
         elemDisc["transport"]:set_upwind(FullUpwind())
