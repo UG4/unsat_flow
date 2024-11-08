@@ -28,13 +28,13 @@ local levee2D =
       type = "vanGenuchten",
       thetaS = 0.37, thetaR = 0.043,
       alpha = 0.087/rhog, n = 1.58,
-      Ksat = 2.76/86400},
+      Ksat = 3e-5},
 
     { uid = "@Clay",
       type = "vanGenuchten",
       thetaS = 0.446, thetaR = 0.0,
       alpha = 0.152/rhog, n = 1.17,
-      Ksat = 8.2e-4/86400},
+      Ksat = 5e-6},
   },
 
   flow =
