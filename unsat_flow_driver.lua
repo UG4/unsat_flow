@@ -194,25 +194,30 @@ function unsatSolve(problemID, numPreRefs, numRefs, adaptive)
   print("...DONE!")
 
   local weightedMetricSpace = CompositeSpace()
-  --metricSpace = CompositeSpace()
 
-  local spaceP = VelEnergyComponentSpace("p", 2, ConstUserMatrix(1.0))
-  -- local spaceP = VelEnergyComponentSpace("p", 2, inst.coef.EnergyTensorFlow)
-  -- local spaceC = L2ComponentSpace("c", 2, inst.coef.Conductivity2)
+  if false then
+    local scaleP = 1.0
+    local spaceP = H1SemiComponentSpace("p", 2)
+ 
+    local scaleC = 1e+12
+    local spaceC = L2ComponentSpace("c", 2, scaleC)
 
-  local scaleP = 1.0
-  local spaceP = H1SemiComponentSpace("p", 2)
+    weightedMetricSpace:add(spaceC, scaleC)
+    weightedMetricSpace:add(spaceP, scaleP)
+  else
+    -- Scale  with || (kappa_0/mu_0) * grad(p) || 
+    -- Scale  with || (kappa_0/mu_0) * rho' * g  * w || 
 
-  local scaleC = 1e+12
-  local spaceC = L2ComponentSpace("c", 2, scaleC)
+    local kappa_over_mu_squared = 1.0 -- 4.60095884e-7 
+    local spaceP = VelEnergyComponentSpace("p", 2, ConstUserMatrix(kappa_over_mu_squared))
+    local spaceC = L2ComponentSpace("c", 2, kappa_over_mu_squared*(200*10)*200*10)
 
-  -- weightedMetricSpace:add(spaceC)
-  weightedMetricSpace:add(spaceP, scaleP)
-
+    weightedMetricSpace:add(spaceP)
+    weightedMetricSpace:add(spaceC)
+  end
 
   local limexErrorEst = CompositeGridFunctionEstimator()
   limexErrorEst:add(weightedMetricSpace)
-  -- Original: limexErrorEst:add(spaceP)
 
   limex:add_error_estimator(limexErrorEst)
   limex:set_tolerance(problem.time.tol)
