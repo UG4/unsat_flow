@@ -48,7 +48,7 @@ local lens =
   domain =
   {
     dim = 2,
-    grid = "grids/stoeckl_lens_pump.ugx",
+    grid = "grids/stoeckl_lens_pump2.ugx",
     numRefs = ARGS.numRefs,
     numPreRefs = ARGS.numPreRefs,
   },
@@ -123,13 +123,30 @@ local lens =
       rap			= true,		                          -- comutes RAP-product instead of assembling if true
       baseLevel	= ARGS.numPreRefs,                -- gmg - baselevel
     },
+    --[[
     convCheck =
       { type		= "standard",
         iterations	= 30,		-- number of iterations
-        absolute	= 0.5e-8,	-- absolut value of defact to be reached; usually 1e-8 - 1e-10 (must be stricter / less than in newton section)
-        reduction	= 1e-7,		-- reduction factor of defect to be reached; usually 1e-7 - 1e-8 (must be stricter / less than in newton section)
+        absolute	= 1e-12,	-- absolut value of defact to be reached; usually 1e-8 - 1e-10 (must be stricter / less than in newton section)
+        reduction	= 1e-9,		-- reduction factor of defect to be reached; usually 1e-7 - 1e-8 (must be stricter / less than in newton section)
         verbose		= true		-- print convergence rates if true
       }
+    --]]
+       -- [[
+        convCheck = {
+          type		= "composite",
+          iterations	= 100,		-- number of iterations
+          absolute	= 1e-12,	-- absolut value of defact to be reached; usually 1e-8 - 1e-10 (must be stricter / less than in newton section)
+          reduction	= 1e-7,		-- reduction factor of defect to be reached; usually 1e-7 - 1e-8 (must be stricter / less than in newton section)
+          verbose		= true,		-- print convergence rates if true
+          sub = 
+          {
+            {cmp = "c", absolute = 1e-12, relative=1e-10},
+            {cmp = "p", absolute = 1e-15, relative=1e-10}
+          }
+      }
+      --]]  
+      
   },
 
   time =
@@ -152,7 +169,7 @@ local lens =
     fs_evaluation_points = {
       {0.0, 0.0}, {0.1, 0.0}, {0.2, 0.0}, {0.3, 0.0}, {0.4, 0.0}, {0.5, 0.0}, {0.6, 0.0}, {0.7, 0.0}, {0.8, 0.0}, {0.9, 0.0}
     },
-    plot_step = 3600, -- every hour
+    -- plot_step = 360, -- every hour -- 10 mins
   }
 
 }

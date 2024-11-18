@@ -2,7 +2,7 @@
 -- Author: Niklas Conen
 
 local myPath = ug_get_current_path()
-package.path = package.path .. ";" .. myPath .. "/config/?.lua;" .. myPath .. "/?.lua"
+package.path = package.path .. ";" .. myPath .. "config/?.lua;" .. myPath .. "?.lua"
 -- package.path = package.path .. ";" .. myPath .. "/config/trench/?.lua"
 package.path = package.path .. ";./config/?.lua;./?.lua"
 print(package.path)
@@ -183,8 +183,8 @@ function unsatSolve(problemID, numPreRefs, numRefs, adaptive)
     dtmin = problem.time.dtmin,
     dtmax = problem.time.dtmax,
 
-    rhoSafetyOPT = 0.8,
-    spacesOPT = WeightedH1SemiSpace,
+    rhoSafetyOPT = 0.25,
+    -- spacesOPT = WeightedH1SemiSpace,
     --debugOPT = dbgWriter,
   }
 
@@ -215,7 +215,9 @@ function unsatSolve(problemID, numPreRefs, numRefs, adaptive)
     local kappa_over_mu_squared = 1.0 -- 4.60095884e-7 
     local spaceP = VelEnergyComponentSpace("p", 2, ConstUserMatrix(kappa_over_mu_squared))
     local spaceC = L2ComponentSpace("c", 2, kappa_over_mu_squared*(200*10)*200*10)
+    local spaceC2 = H1SemiComponentSpace("c", 2)
 
+    weightedMetricSpace:add(spaceC2)
     weightedMetricSpace:add(spaceC)
     weightedMetricSpace:add(spaceP)
   
@@ -228,7 +230,7 @@ function unsatSolve(problemID, numPreRefs, numRefs, adaptive)
 
   limex:add_error_estimator(limexErrorEst)
   limex:set_tolerance(problem.time.tol)
-  limex:set_stepsize_safety_factor(0.8)
+  limex:set_stepsize_safety_factor(0.25)
   limex:set_time_step(problem.time.dt)
   limex:set_dt_min(problem.time.dtmin)
   limex:set_dt_max(problem.time.dtmax)
