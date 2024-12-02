@@ -219,8 +219,10 @@ function unsatSolve(problemID, numPreRefs, numRefs, adaptive)
 
     weightedMetricSpace:add(spaceC2)
     weightedMetricSpace:add(spaceC)
-    weightedMetricSpace:add(spaceP)
-  
+
+    weightedMetricSpace:add(spaceP)  
+    weightedMetricSpace:add(L2ComponentSpace("p", 2))
+
     limexErrorEst:add(weightedMetricSpace)
     limexErrorEst:use_strict_relative_norms(true)
   end
@@ -297,14 +299,21 @@ function unsatSolve(problemID, numPreRefs, numRefs, adaptive)
     print("INT_V00 - Integral over salt mass fraction:\t" .. time .. "\t" .. Integral(disc.CompositeVoluFrac, disc.u))
     print("INT_V01 - Integral over salt mass fraction:\t" .. time .. "\t" .. Integral(disc.CompositeSaltMass, disc.u))
     print("INT_V02 - Integral over fluid phase volume:\t".. time .. "\t" .. Integral(disc.CompositeSaturation, disc.u))
-    --print("INT_S02a - Integral gradp*n (in):\t" .. time .. "\t" .. IntegrateNormalGradientOnManifold(disc.u, "p","Inflow", "Medium" ))
-    --print("INT_S02b - Integral gradp*n (out):\t" .. time .. "\t".. IntegrateNormalGradientOnManifold(disc.u, "p","Sea", "Medium" ))
+    -- print("INT_S02a - Integral gradp*n (in):\t" .. time .. "\t" .. IntegrateNormalGradientOnManifold(disc.u, "p","Inflow", "Medium" ))
+    -- print("INT_S02b - Integral gradp*n (out):\t" .. time .. "\t".. IntegrateNormalGradientOnManifold(disc.u, "p","Sea", "Medium" ))
 
-    --print("INT_S03a - Integral gradc*n (in):\t" .. time .. "\t" .. IntegrateNormalGradientOnManifold(disc.u, "c","Inflow", "Medium" ))
-    --print("INT_S03b - Integral gradc*n (out):\t" .. time .. "\t".. IntegrateNormalGradientOnManifold(disc.u, "c","Sea", "Medium" ))
+    -- print("INT_S03a - Integral gradc*n (in):\t" .. time .. "\t" .. IntegrateNormalGradientOnManifold(disc.u, "c","Inflow", "Medium" ))
+    -- print("INT_S03b - Integral gradc*n (out):\t" .. time .. "\t".. IntegrateNormalGradientOnManifold(disc.u, "c","Sea", "Medium" ))
+    -- print("INT_S04 - Integral gradp*n (out):\t" .. time .. "\t".. IntegrateNormalGradientOnManifold(disc.u, "p", "Rim", "Aquifer" ))
+   
     print("")
     print(">>>> TimeStep: " .. step .. "," .. time .. "," .. currdt .. " <<<<")
     print("")
+
+    if (problem.PostProcess ~= nil)  then 
+      problem.PostProcess(step, time, currdt)
+    end
+
     return 0;
   end
 
@@ -320,6 +329,7 @@ function unsatSolve(problemID, numPreRefs, numRefs, adaptive)
     surfaceObserver = FSFileMeasurer(disc.u, "p", 0.0)
     surfaceObserver:enable_print_output()
     surfaceObserver:enable_step_file_output("phreatic_surface_height")
+
     saltInterfaceObserver = FSFileMeasurer(disc.u, "c", 0.5)
     saltInterfaceObserver:enable_print_output()
     saltInterfaceObserver:enable_step_file_output("salt_interface_height")
