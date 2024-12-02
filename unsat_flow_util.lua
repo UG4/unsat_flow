@@ -99,7 +99,7 @@ function ProblemDisc:CreateElemDisc(subdom, medium)
 
 
     local storativity = 0.0
-    if (medium.mass_storage ~= nil) 
+    if (medium.mass_storage ~= nil) then
         if (type(medium.mass_storage.value) == "number") then
             storativity = medium.mass_storage.value
         end
