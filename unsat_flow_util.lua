@@ -97,6 +97,14 @@ function ProblemDisc:CreateElemDisc(subdom, medium)
         saturation = RichardsUserData:create_saturation(self.modelMap[medium.saturation.value])
     end
 
+
+    local storativity = 0.0
+    if (medium.mass_storage ~= nil) 
+        if (type(medium.mass_storage.value) == "number") then
+            storativity = medium.mass_storage.value
+        end
+    end
+
     local DarcyVelocity = DarcyVelocityLinker()
     -- to calculate the relative hydraulic conductivity one has to specify either the mediums
     -- permeability K and viscosity mu or the hydraulic conductivity in a saturated medium Ksat
@@ -132,13 +140,14 @@ function ProblemDisc:CreateElemDisc(subdom, medium)
     DarcyVelocity:set_gravity(self.gravity)
 
     local volufrac = ScaleAddLinkerNumber() -- theta
-    volufrac:add(saturation, 1.0)
+    volufrac:add(saturation, 1.0) 
+    -- TODO -- volufrac:add(saturation, porosity) 
 
     -----------------------------------------
     -- Equation [1]
     -----------------------------------------
     -- flow equation
-    -- $\partial_t (\Phi S_w \rho_w)
+    -- $\partial_t (\Phi S_w \rho_w + Sy p) 
     --		+ \nabla \cdot (\rho_w \vec{v}_w) = \rho_w \Gamma_w$
 
     -- fluid storage: \Phi \rho_w S_w
@@ -166,7 +175,7 @@ function ProblemDisc:CreateElemDisc(subdom, medium)
         elemDisc["flow"]:set_flux(fluidFlux)
     end
 
-    elemDisc["flow"]:set_mass_scale(0.0)
+    elemDisc["flow"]:set_mass_scale(storativity)
     elemDisc["flow"]:set_diffusion(0.0)
 
     -----------------------------------------
