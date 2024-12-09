@@ -1,6 +1,6 @@
 local rho0 = 1000 
 local rhog = 9.81 * 1000 -- approx: 1e+4
-local z0 = 2 -- two meters below ground level.
+local z0 = 2.0 -- two meters below ground level.
 local alpha = 1e+1
 local Ss = 0.25 -- 1/m
 
@@ -383,17 +383,20 @@ well3D.PostProcess = function (step, time, currdt)
   -- Evaluate Theis' well solution
   local points = well3D.output.fs_evaluation_points
   -- print(points) -- DEBUG: print evaluation points
-
-  local values ={}
-  print("t=\t"..time)
+  print("-------- Theis (t="..time..")---------")
+  local dd ={}
+ 
    for i, x in ipairs(points) do
     local res=well3D.compute_ref(x[1], x[2], time, 0)
     --print(res)
-    values[i] = res
+    dd[i] = res
+
+    -- print("{"..x[1].. "," ..x[2].."} \t".. time .. "\t".. res)
+    print(string.format("{%.3e, %.3e} \t %.4e \t %e " , x[1], x[2], time, -z0-res))
   end
   
   -- Print drawdown
-  print(values)
+  -- print(dd)
 end
 
 
