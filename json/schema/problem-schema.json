@@ -1,6 +1,5 @@
 {
     "$schema": "http://json-schema.org/draft-07/schema#",
-    "$id": "https://ug4.org/apps/unsat_flow/json/schema/problem-schema.json",
     "type": "object",
     "description": "Problem configuration. Consisting of parameters for domain, flow, media, solvers, time-stepping, and output.",
     "properties": {
@@ -20,7 +19,11 @@
           "type": "object",
           "properties": {
             "uid": { "type": "string" },
-            "type": { "type": "string" },
+            "type": {
+              "type": "string",
+              "enum": ["const", "vanGenuchten", "exp"]
+            },
+
             "thetaS": { "type": "number" },
             "thetaR": { "type": "number" },
             "alpha": { "type": "number" },
@@ -29,37 +32,95 @@
             "beta": { "type": "number" },
             "value": { "type": "number" }
           },
-          "required": ["uid", "type"]
+          "required": ["uid", "type"],
+          "allOf": [
+          {
+            "if": {
+              "properties": {
+                "type": { "const": "vanGenuchten" }
+              }
+            },
+            "then": {
+              "required": ["thetaS", "thetaR", "alpha", "n"]
+            }
+          },
+          {
+            "if": {
+              "properties": {
+                "type": { "const": "exp" }
+              }
+            },
+            "then": {
+              "required": ["pentry", "alpha", "beta", "thetaR", "thetaS"]
+            }
+          },
+          {
+            "if": {
+              "properties": {
+                "type": { "const": "const" }
+              }
+            },
+            "then": {
+              "required": ["value"]
+            }
+          }
+          ]
         }
       },
       "flow": {
         "type": "object",
         "properties": {
-          "type": { "type": "string" },
-          "cmp": { "type": "array", "items": { "type": "string" } },
-          "gravity": { "type": "number" },
+          "boussinesq": {
+            "type": "boolean"
+          },
+          "gravity": {
+            "type": "number",
+            "description": "[m s^{-2}], must be negative!"
+          },
           "density": {
             "type": "object",
             "properties": {
-              "type": { "type": "string" },
-              "min": { "type": "number" },
-              "max": { "type": "number" },
-              "w_max": { "type": "number" }
+              "type": {
+                "type": "string",
+                "enum": ["linear", "exp", "ideal"],
+                "description": "density function"
+              },
+              "min": {
+                "type": "number",
+                "description": "[kg m^{-3}] water density"
+              },
+              "max": {
+                "type": "number",
+                "description": "[kg m^{-3}] saltwater density"
+              }
             },
-            "required": ["type", "min"]
+            "required": ["type", "min", "max"]
           },
           "viscosity": {
             "type": "object",
             "properties": {
-              "type": { "type": "string" },
-              "mu0": { "type": "number" }
+              "type": {
+                "type": "string",
+                "enum": ["const", "real"],
+                "description": "viscosity function"
+              },
+              "mu0": {
+                "type": "number",
+                "description": "[Pa s]"
+              }
             },
             "required": ["type", "mu0"]
           },
-          "diffusion": { "type": "number" },
-          "upwind": { "type": "string" }
+          "diffusion": {
+            "type": "number",
+            "description": "[m^2/s]"
+          },
+          "upwind": {
+            "type": "string",
+            "enum": ["partial", "full"]
+          }
         },
-        "required": ["type", "cmp", "gravity", "density", "viscosity", "diffusion", "upwind"]
+        "required": ["gravity", "density", "diffusion"]
       },
       "medium": {
         "description" : "Characterization of the media",
@@ -68,49 +129,46 @@
           "type": "object",
           "properties": {
             "subsets": { "type": "array", "items": { "type": "string" } },
-            "porosity": { "type": "number" },
-            "saturation": {
+            "porosity": {
               "description" : "Relative saturation (number, string or object)",
               "oneOf": [
                 {  "type": "number" },
-                {  
+                {
                   "type": "string",
                   "description": "UID providing a reference to parameter object."
-                },
-                {  
-                  "type": "object",
-                  "description": "DEPRECATED: UID providing a reference to parameter object.",
-                  "properties": {
-                    "value": { "type": "string" }
-                  }
                 }
-              ],       
-              "required": ["value"]
+              ]
             },
+          "saturation": {
+            "type": "object",
+            "properties": {
+              "value": {
+                "type": "string"
+              }
+            },
+            "required": ["value"]
+          },
             "conductivity": {
-              "description" : "Relative permeability (number, string or object)",
               "type": "object",
               "properties": {
-                "value": { "type": "string" }
+                "value": {
+                  "type": "string"
+                }
               },
-              "required": ["value"]
+            "required": ["value"]
             },
             "permeability": {
-              "description" : "Absolute permeability (number or matrix)", 
-              "type": "number" 
+              "description" : "Absolute permeability (number or matrix)",
+              "type": "number"
             },
-            "diffusion": { 
-              "description" : "Molecular diffusion", 
-              "type": "number" 
-            },
-            "alphaL": { 
-               "description" : "(Optional) Scheidegger dispersion (longitudinal)", 
+            "alphaL": {
+               "description" : "(Optional) Scheidegger dispersion (longitudinal)",
                "type": "number" },
             "alphaT": {
-                "description" : "(Optional) Scheidegger dispersion (transversal)",  
+                "description" : "(Optional) Scheidegger dispersion (transversal)",
                 "type": "number" }
           },
-          "required": ["subsets", "porosity", "saturation", "conductivity", "permeability", "diffusion"]
+          "required": ["subsets", "porosity", "saturation", "conductivity"]
         }
       },
       "sources": {
@@ -118,10 +176,17 @@
         "items": {
           "type": "object",
           "properties": {
-            "cmp": { "type": "string" },
+            "cmp": { "type": "string", "enum": ["p", "c"] },
             "subset": { "type": "string" },
-            "coord": { "type": "array", "items": { "type": "number" } },
-            "strength": { "type": "number" },
+            "coord": { "type": "array", "items": { "type": "number" }, "minItems": 2, "maxItems": 3 },
+            "strength": {
+              "value": {
+                "oneOf": [
+                    { "type": "string" },
+                    { "type": "number" }
+                  ]
+                }
+              },
             "substances": {
               "type": "array",
               "items": {
@@ -152,8 +217,28 @@
           "required": ["cmp", "value"]
         }
       },
-      "boundary": { "$ref": "boundary-schema.json"},
-      "solver": { "$ref": "solver-schema.json" },
+      "boundary": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "properties": {
+            "cmp": { "type": "string" },
+            "type": {
+              "type": "string",
+              "enum": ["dirichlet", "flux", "neumann"],
+              "description": "Type of boundary condition."
+            },
+            "bnd": { "type": "string" },
+            "value": {
+              "oneOf": [
+                  { "type": "string" },
+                  { "type": "number" }
+                ]
+              }
+            },
+          "required": ["cmp", "type", "bnd", "value"]
+        }
+      },
       "time": {
         "type": "object",
         "properties": {
@@ -172,21 +257,25 @@
       "output": {
         "type": "object",
         "properties": {
-          "freq": { "type": "integer" },
-          "binary": { "type": "boolean" },
           "file": { "type": "string" },
-          "data": { "type": "array", "items": { "type": "string" } },
+          "data": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "enum": ["all", "p", "gradp", "c", "gradc", "rho", "mu", "kr", "s", "q", "ff", "tf", "af", "df", "pc", "vf"]
+            }
+          },
           "fs_evaluation_points": {
             "type": "array",
             "items": {
               "type": "array",
               "items": { "type": "number" }
             }
-          }
+          },
+          "plot_step": { "type": "number" }
         },
-        "required": ["freq", "binary", "file", "data", "fs_evaluation_points"]
+        "required": ["file", "data"]
       }
     },
-    "required": ["domain", "parameter", "flow", "medium", "sources", "initial", "boundary", "solver", "time", "output"]
+    "required": ["domain", "parameter", "flow", "medium", "initial", "time", "output"]
   }
-  
