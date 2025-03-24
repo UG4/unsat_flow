@@ -7,7 +7,7 @@ rhog = (-1.0)*lens_rho*lens_g
 
 recharge_rate = util.GetParamNumber("--recharge", -1.8e-5)
 total_time = util.GetParamNumber("--hours", 24, "Total simulation time in hours")
-steady_state = 60*60*10 -- 10 hours to reach steady state
+steady_state = 60*60*12 -- 12 hours to reach steady state
 pump_rate = -5e-3 -- 1.0 m^3/day
 sea_level = util.GetParamNumber("--sea_level", 0.27, "Sea level in m") -- 0.3 for fully saturated
 
@@ -142,7 +142,7 @@ local lens =
     dtmin	= 0.001,	          -- [s]  minimal time step
     dtmax	= 8.64*1000,	            -- [s]  maximal time step
     dtred	= 0.3,			          -- [1]  reduction factor for time step
-    tol 	= 1e-2,
+    tol 	= 1e-3,
   },
 
   output =

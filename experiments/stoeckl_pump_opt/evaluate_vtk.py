@@ -1,7 +1,7 @@
 """Script to extract the lens thickness from Stoeckl Lens Testcase using Paraview's Python interface"""
 
 import sys
-sys.path.append("/opt/paraview/lib/python3.12/site-packages/")
+sys.path.append("/opt/paraview/lib/python3.13/site-packages/")
 
 import paraview.simple as pv
 import glob
@@ -11,9 +11,9 @@ def collectFiles(pathToFiles: str) -> list:
     return sorted(glob.glob(pathToFiles))[-2:-1]
 
 def extractToeLength(filename: str):
-    """Extract Lens Thickness from the vtk files. 
+    """Extract Lens Thickness from the vtk files.
 
-    Steps: 
+    Steps:
         1. Read the vtk file into Paraview
         2. Apply Contour filter on concentration with value 0.5
         3. Export the contour points
@@ -26,7 +26,7 @@ def extractToeLength(filename: str):
 
     if len(vtkFiles) == 0:
         vtkFiles = collectFiles("./*.vtu")
-    
+
     reader = pv.OpenDataFile(vtkFiles)
     if reader:
         print("Success")
@@ -44,11 +44,11 @@ def extractToeLength(filename: str):
 
     pv.UpdatePipeline(proxy=contour)
     data = pv.servermanager.Fetch(contour)
-    
+
     if data.GetPoints() is None:
         #print("No data found for timestep ", t)
         pass
-    
+
     bounds = data.GetPoints().GetBounds()
     # bounds are [xmin, xmax, ymin, ymax, zmin, zmax]
 

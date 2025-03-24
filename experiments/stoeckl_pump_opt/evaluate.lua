@@ -75,7 +75,7 @@ local stoeckl_pump =
       max = params.saltWaterDensity,	-- [ kg m^{-3} ]
     },
     diffusion   = 1e-9, -- [ m^2/s ]
-    upwind = "full",
+    upwind = "partial",
   },
    medium =
    {

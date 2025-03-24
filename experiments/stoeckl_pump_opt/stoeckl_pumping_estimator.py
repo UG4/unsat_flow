@@ -1,5 +1,5 @@
 """
-Applies the ParameterEstimator Plugin to estimate the hydraulic conductivity K, 
+Applies the ParameterEstimator Plugin to estimate the hydraulic conductivity K,
 the porosity n_p, and van Genuchten Parameters alpha and n
 
 Parameter Variations:
@@ -12,7 +12,7 @@ Parameter Variations:
 # import from plugins folder
 # please make sure the enivorment variable UG4_ROOT points to your UG4 directory!
 import sys, os
-sys.path.append(os.path.join(os.environ["UG4_ROOT"],"plugins","ParameterEstimator", "python")) 
+sys.path.append(os.path.join(os.environ["UG4_ROOT"],"plugins","ParameterEstimator", "python"))
 
 from UGParameterEstimator import *
 

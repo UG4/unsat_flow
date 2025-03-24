@@ -5,50 +5,10 @@ lens_rho_c = 1021
 lens_g = -9.81 -- must be negative!
 rhog = (-1.0)*lens_rho*lens_g
 
-recharge_rate = util.GetParamNumber("--recharge", -1.333e-5)
+recharge_rate = util.GetParamNumber("--recharge", -0.8 / (24 * 3600))
 total_time = util.GetParamNumber("--hours", 24, "Total simulation time in hours")
-steady_state = 60*60*6 -- 6 hours to reach steady state
-pump_rate = -1.5e-3 -- 1.0 m^3/day
-sea_level = util.GetParamNumber("--sea_level", 0.27, "Sea level in m") -- 0.3 for fully saturated
 
 tstop = total_time * 60 * 60 -- 1 day
-
-function HydroPressure(x, y)
-  return (y - sea_level) * lens_rho_c * lens_g -- phreatic surface at y = 0.4m
-end
-
-function pumping(x, y, t, si)
-  if t < steady_state then
-    return 0.0
-  else
-    return pump_rate
-  end
-end
-
-function left_boundary(x, y, t, si)
-  hp = HydroPressure(x, y)
-  if y > sea_level then
-    return false, 0.0 -- no flow above sea level
-  else
-    return true, hp
-  end
-end
-
-function left_boundary_c(x, y, t, si)
-  if y > sea_level then
-    return false, 0.0
-  else
-    return true, 1.0
-  end
-end
-
-function time_dependent_influx(x, y, t, si)
-  if t < steady_state then
-    return true, recharge_rate*lens_rho
-  else
-    return false, 0.0
-  end
-end
 
 local lens =
 {
@@ -56,7 +16,7 @@ local lens =
   domain =
   {
     dim = 2,
-    grid = "grids/stoeckl_lens_pump.ugx",
+    grid = "grids/stoeckl_lens.ugx",
     numRefs = ARGS.numRefs,
     numPreRefs = ARGS.numPreRefs,
   },
@@ -66,8 +26,7 @@ local lens =
     { uid = "@Material",
       type = "vanGenuchten",
       thetaS = 0.39, thetaR = 0.1,
-      alpha = 0.423/rhog, n = 2.06,
-      Ksat = 4.5e-3}
+      alpha = 0.423/rhog, n = 2.06}
   },
 
   flow =
@@ -80,7 +39,11 @@ local lens =
       min = lens_rho,      -- [ kg m^{-3} ] water density
       max = lens_rho_c,           -- [ kg m^{-3} ] saltwater density
     },
-    diffusion   = 10e-9, -- [ m^2/s ]
+    viscosity =
+    { type = "const",         -- viscosity function ["const", "real"]
+      mu0 = 1e-3              -- [ Pa s ]
+    },
+    diffusion   = 1.0e-9, -- [ m^2/s ]
     upwind = "partial"
   },
   medium =
@@ -94,7 +57,10 @@ local lens =
          conductivity =
          { type  = "vanGenuchten",
            value   = "@Material",
-         }
+         },
+         --alphaL = 5e-4,
+         --alphaT = 0.1*5e-4,
+         permeability = 4.6e-10
      },
  },
 
@@ -107,18 +73,13 @@ local lens =
   boundary =
   {
     -- Top
-    {cmp = "p", type = "neumann", bnd = "Top", inner="Inner", value = recharge_rate*lens_rho },
-    {cmp = "c", type = "dirichlet", bnd = "Top", value = 0.0 },
+    {cmp = "p", type = "flux", bnd = "Top", inner="Inner", value = "top_boundary"},
+    {cmp = "c", type = "dirichlet", bnd = "Top", value = "top_boundary_c"},
 
     -- Left
     {cmp = "p", type = "dirichlet", bnd = "Left", value = "left_boundary"},
-    {cmp = "c", type = "dirichlet", bnd = "Left", value = "left_boundary_c"},
+    {cmp = "c", type = "dirichlet", bnd = "Left", value = 1.0},
   },
-
-  --sources =
-  --{
-  --  {cmp = "p", strength = "pumping", subset = "Pump", coord = {0.9, 0.15}, substances = {{cmp = "c"}}},
-  --},
 
   linSolver =
   { type = "bicgstab",			-- linear solver type ["bicgstab", "cg", "linear"]
@@ -132,15 +93,11 @@ local lens =
       baseLevel	= ARGS.numPreRefs,                -- gmg - baselevel
     },
     convCheck =
-      { type    = "composite",
-        iterations  = 30,   -- number of iterations
-        absolute  = 0.5e-8, -- absolut value of defact to be reached; usually 1e-8 - 1e-10 (must be stricter / less than in newton section)
-        reduction = 1e-7,   -- reduction factor of defect to be reached; usually 1e-7 - 1e-8 (must be stricter / less than in newton section)
-        verbose   = true ,   -- print convergence rates if true
-        sub ={
-        {cmp ="p"},
-        {cmp="c"}
-        }
+      { type		= "standard",
+        iterations	= 30,		-- number of iterations
+        absolute	= 0.5e-8,	-- absolut value of defact to be reached; usually 1e-8 - 1e-10 (must be stricter / less than in newton section)
+        reduction	= 1e-7,		-- reduction factor of defect to be reached; usually 1e-7 - 1e-8 (must be stricter / less than in newton section)
+        verbose		= true		-- print convergence rates if true
       }
   },
 
@@ -152,9 +109,9 @@ local lens =
     max_time_steps = 10000,		  -- [1]	maximum number of time steps
     dt		= 0.864,		          -- [s]  initial time step
     dtmin	= 0.001,	          -- [s]  minimal time step
-    dtmax	= 86400,	            -- [s]  maximal time step
-    dtred	= 0.5,			          -- [1]  reduction factor for time step
-    tol 	= 1e-3,
+    dtmax	= 8.64*10,	            -- [s]  maximal time step
+    dtred	= 0.3,			          -- [1]  reduction factor for time step
+    tol 	= 1e-2,
   },
 
   output =
@@ -167,5 +124,33 @@ local lens =
   }
 
 }
+
+T0 = 6*60*60 -- phase switch, after quasi steady state, 6h
+
+function HydroPressure(x, y)
+  return (y - 0.3) * lens_rho_c * lens_g
+end
+
+function top_boundary(x, y, t, si)
+  -- Shoreline segment of 1cm between 0.5m and 0.51m
+  if t >= T0 or x <= 0.51 then
+    return false, 0.0
+  else
+    return true, recharge_rate*lens_rho -- [m^3/s]
+  end
+end
+
+function top_boundary_c(x, y, t, si)
+  if t >= T0 or x <= 0.51 then
+    return false, 0.0
+  else
+    return true, 0.0
+  end
+end
+
+
+function left_boundary(x, y, t, si)
+  return true, HydroPressure(x, y)
+end
 
 return lens

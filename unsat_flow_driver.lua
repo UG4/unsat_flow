@@ -39,6 +39,7 @@ function unsatSolve(problemID, numPreRefs, numRefs, adaptive)
     problem = require(problemID)
   else
     problem = problemID
+    problemID = "from table"
   end
 
   vtools = require("validation")
@@ -199,7 +200,7 @@ function unsatSolve(problemID, numPreRefs, numRefs, adaptive)
   if false then
     local scaleP = 1.0
     local spaceP = H1SemiComponentSpace("p", 2)
- 
+
     local scaleC = 1e+12
     local spaceC = L2ComponentSpace("c", 2, scaleC)
 
@@ -209,22 +210,22 @@ function unsatSolve(problemID, numPreRefs, numRefs, adaptive)
 
     limexErrorEst:add(weightedMetricSpace)
   else
-    -- Scale  with || (kappa_0/mu_0) * grad(p) || 
-    -- Scale  with || (kappa_0/mu_0) * rho' * g  * w || 
+    -- Scale  with || (kappa_0/mu_0) * grad(p) ||
+    -- Scale  with || (kappa_0/mu_0) * rho' * g  * w ||
 
-    local kappa_over_mu_squared = 1.0 -- 4.60095884e-7 
+    local kappa_over_mu_squared = 1.0 -- 4.60095884e-7
     local spaceP = VelEnergyComponentSpace("p", 2, ConstUserMatrix(kappa_over_mu_squared))
     local spaceC = L2ComponentSpace("c", 2, kappa_over_mu_squared*(200*10)*200*10)
 
     weightedMetricSpace:add(spaceC)
     weightedMetricSpace:add(spaceP)
-  
+
     limexErrorEst:add(weightedMetricSpace)
     limexErrorEst:use_strict_relative_norms(true)
   end
 
-  
-  
+
+
 
   limex:add_error_estimator(limexErrorEst)
   limex:set_tolerance(problem.time.tol)
