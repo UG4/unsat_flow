@@ -1,5 +1,6 @@
 local rho0 = 1000 
 local rhog = 9.81 * 1000 -- approx: 1e+4
+local rhog1 = 9.81 *1020
 local z0 = 2.0 -- two meters below ground level.
 local alpha = 1e+1
 local Ss = 0.25 -- 1/m
@@ -63,14 +64,14 @@ local well3D =
   domain = 
   {
     dim = 3,
-    grid = "grids/well3D.ugx",
+    grid = "grids/lens3D.ugx",
     numRefs = ARGS.numRefs,
     numPreRefs = ARGS.numPreRefs,
     -- neededSubsets = {}
   },
 
   -- list of non-linear models => translated to functions
-  parameter = {  -- TODO: Parameters from List & Radu (2016)?
+  parameter = { 
     
     { uid = "@Silt",
       type = "vanGenuchten",
@@ -145,8 +146,8 @@ local well3D =
       subsets = {"Aquifer"}, 
       porosity = 0.2,
       
-      -- saturation = { value = "@MyExponential" },
-      -- conductivity = { value = "@MyExponential"  }, -- relative permeabiltiy
+      saturation = { value = "@Silt" },
+      conductivity = { value = "@Silt"  }, -- relative permeabiltiy
       
 
       --conductivity = { value = "@WaltherSaturation" }, -- relative permeabiltiy
@@ -155,10 +156,10 @@ local well3D =
       --saturation = { ["$ref"] = "#/parameters/WaltherSaturation" } 
       -- cf. https://redocly.com/docs/resources/ref-guide
      
-      saturation = {  value = 1.0 },
-      conductivity = { value = 1.0 }, -- relative permeabiltiy
+      --saturation = {  value = 1.0 },
+      --conductivity = { value = 1.0 }, -- relative permeabiltiy
       -- storativity = { value = 5.0968E-08 }, 
-      mass_storage = { value = rho0*Ss/rhog}, -- /9.81}, -- relative permeabiltiy
+      --mass_storage = { value = rho0*Ss/rhog}, -- /9.81}, -- relative permeabiltiy
     
       permeability  = 1.0194e-12, --  m^2 (from Walther)
         
@@ -170,8 +171,8 @@ local well3D =
 
   sources =
   {
-     -- { cmp = "p", subset = "Sink", coord = {0.5, -0.75}, strength = -Qstrength},
-     -- [[ 
+    
+     --[[ 
      { 
         cmp = "p", subset = "Sink", coord = {0.0, 0.0, -10.0}, 
         strength = -QStrength, 
@@ -185,16 +186,19 @@ local well3D =
 
   initial = 
    {
-       { cmp = "p", value = "Well3D_Hydrostatic" },
-       { cmp = "c", value = 0.0 },
+       { cmp = "p", value = "Lens_3D_Initial_P" },
+       { cmp = "c", value = "Lens_3D_Initial_C"},
    },
 
   boundary = 
   {
      -- {cmp = "p", type = "flux", inner = "Aquifer", bnd = "Rim", value = -QStrength/mySectorArea},
-     {cmp = "p", type = "dirichlet", bnd = "Rim", value = "Well3D_Hydrostatic"},
-     {cmp = "c", type = "dirichlet", bnd = "Rim", value = 0.0},
-     -- {cmp = "c", type = "dirichlet", bnd = "Sink", value = 0.0},
+    {cmp = "p", type = "dirichlet", bnd = "Rim", value = "Lens_3D_Seaside_BC_P"},
+    {cmp = "c", type = "dirichlet", bnd = "Rim", value = "Lens_3D_Seaside_BC_C"},
+     
+     
+     {cmp = "p", type = "flux", inner = "Aquifer", bnd = "Top", value = "Lens_3D_Top_BC_P"},
+     {cmp = "c", type = "dirichlet", bnd = "Top", value = "Lens_3D_Top_BC_C"},
   },
 
   solver =
@@ -229,18 +233,10 @@ local well3D =
               postSmooth 	= 3,		-- number postsmoothing steps
               rap			= true,		-- comutes RAP-product instead of assembling if true 
               baseLevel	= 0, -- gmg - baselevel
+              baseSolver=LU()
               
           },
-          --[[
-          convCheck = {
-              type		= "standard",
-              iterations	= 100,		-- number of iterations
-              absolute	= 0.5e-8,	-- absolut value of defact to be reached; usually 1e-8 - 1e-10 (must be stricter / less than in newton section)
-              reduction	= 1e-7,		-- reduction factor of defect to be reached; usually 1e-7 - 1e-8 (must be stricter / less than in newton section)
-              verbose		= true,		-- print convergence rates if true
-          }
-          --]]
-          -- [[
+     
           convCheck = {
             type		= "composite",
             iterations	= 100,		-- number of iterations
@@ -263,21 +259,12 @@ local well3D =
       start 	= 0.0,				-- [s]  start time point
       stop	= 20*360.0*DAY,			-- [s]  end time point
       max_time_steps = 100000,		-- [1]	maximum number of time steps
-      dt		= 1e-4*ARGS.dt*DAY,		-- [s]  initial time step
+      dt		= 1e-0*ARGS.dt*DAY,		-- [s]  initial time step
       dtmin	= 1e-14 * ARGS.dt*DAY,	-- [s]  minimal time step
       dtmax	= 120.0*DAY,	-- [s]  maximal time step
       dtred	= 0.1,				-- [1]  reduction factor for time step
       tol 	= 1e-3,
       
-      metricSpace = {
-       
-        VelEnergyComponentSpace("p", 2, ConstUserMatrix(1.0)),  -- kappa_over_mu_squared = 1.0,
-        L2ComponentSpace("c", 2, 1.0*(200*10)*200*10),  -- kappa_over_mu_squared = 1.0,
-        H1SemiComponentSpace("c", 2),
-        L2ComponentSpace("p", 2)
-
-      }
-
       -- Idea: new items (JSON reference):
       post_process = { ["$ref"] = "./well3D.lua#/TheisToolbox/PostProcess" } -- JSON-like reference to LUA function.
   },
@@ -307,17 +294,55 @@ local well3D =
   functions =
   {
     -- We can put arbitrary functions here. 
-    HydrostaticPressure
+    HydrostaticPressure = function (x, y, z, t, si) 
+      return (-z0-z) * rhog1 -- z0 meters below ground level
+    end
 
   }
 }
 
 
 -- Some functions (unfortunately as global variables...)
-function Well3D_Hydrostatic(x, y, z, t, si) 
-  return (-z0-z) * rhog -- z0 meters below ground level
+function Lens_3D_Initial_P(x, y, z, t, si) 
+  return (-z0-z) * rhog1 -- z0 meters below ground level (saltwater)
 end
 
+function Lens_3D_Initial_C(x, y, z, t, si) 
+  if z<= -z0 then
+    return 1.0 -- z0 meters below ground level
+  end
+   return 0.0
+end
+
+function Lens_3D_Seaside_BC_P(x, y, z, t, si) 
+  --if z<= -z0 then
+   return true, (-z0-z) * rhog1 -- z0 meters below ground level
+  --end
+  --return true, 0
+end
+
+function Lens_3D_Seaside_BC_C(x, y, z, t, si) 
+  if z<= -z0 then return true, 1.0 -- z0 meters below ground level
+  end
+  return true, 0.0
+end
+
+
+function Lens_3D_Top_BC_P(x, y, z, t, si) 
+  local r2=x*x+y*y
+  if r2<=12.5*12.5 then return -5e-6
+  else return 0
+  end
+end
+
+function Lens_3D_Top_BC_C(x, y, z, t, si) 
+  local r2=x*x+y*y
+  --if r2<=12.5*12.5 then 
+    return true, 0.0 -- z0 meters below ground level
+  --else return false, 0.0
+  --end   
+end
+ 
 
 print("==============================================================")
 print("V="..0.125*mySectorVol)

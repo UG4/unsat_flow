@@ -52,7 +52,8 @@ function unsatSolve(problemID, numPreRefs, numRefs, adaptive)
 
   InitUG(problem.domain.dim, AlgebraType("CPU", 1))
 
-  local dom = util.CreateAndDistributeDomain(problem.domain.grid, numRefs, numPreRefs, {})
+  local balancerType =  "bisection" -- "bisection" | "metis"
+  local dom = util.CreateAndDistributeDomain(problem.domain.grid, numRefs, numPreRefs, {}, balancerType)
 
   -- saves the refined grid
   -- SaveGridHierarchyTransformed(dom:grid(), dom:subset_handler(), "refined.ugx", 0.1)
@@ -61,6 +62,11 @@ function unsatSolve(problemID, numPreRefs, numRefs, adaptive)
 
   -- create approximation space.
   local approxSpace = disc:CreateApproxSpace()
+  print("approximation space:")
+
+  print("\nelement distribution:")
+  print(dom:domain_info():to_string())
+
 
   disc.u = GridFunction(disc.approxSpace)
 
@@ -196,40 +202,29 @@ function unsatSolve(problemID, numPreRefs, numRefs, adaptive)
   local limexErrorEst = CompositeGridFunctionEstimator()
   local weightedMetricSpace = CompositeSpace()
 
-  if false then
-    local scaleP = 1.0
-    local spaceP = H1SemiComponentSpace("p", 2)
- 
-    local scaleC = 1e+12
-    local spaceC = L2ComponentSpace("c", 2, scaleC)
-
-     -- Here we add to the metric space
-    weightedMetricSpace:add(spaceC, scaleC)
-    weightedMetricSpace:add(spaceP, scaleP)
-
-    limexErrorEst:add(weightedMetricSpace)
+  if problem.time.metricSpace and type(problem.time.metricSpace)="table" then
+    -- Problem specific.
+    for i, ispace in ipairs(problem.time.metricSpace) do
+      print(i, v)
+      weightedMetricSpace:add(ispace)
+    end
   else
+    -- Default config.
     -- Scale  with || (kappa_0/mu_0) * grad(p) || 
     -- Scale  with || (kappa_0/mu_0) * rho' * g  * w || 
 
     local kappa_over_mu_squared = 1.0 -- 4.60095884e-7 
     local spaceP = VelEnergyComponentSpace("p", 2, ConstUserMatrix(kappa_over_mu_squared))
     local spaceC = L2ComponentSpace("c", 2, kappa_over_mu_squared*(200*10)*200*10)
-    local spaceC2 = H1SemiComponentSpace("c", 2)
-
-    weightedMetricSpace:add(spaceC2)
+    
     weightedMetricSpace:add(spaceC)
-
     weightedMetricSpace:add(spaceP)  
-    weightedMetricSpace:add(L2ComponentSpace("p", 2))
 
     limexErrorEst:add(weightedMetricSpace)
     limexErrorEst:use_strict_relative_norms(true)
   end
 
-  
-  
-
+ 
   limex:add_error_estimator(limexErrorEst)
   limex:set_tolerance(problem.time.tol)
   limex:set_stepsize_safety_factor(0.25)
@@ -302,9 +297,9 @@ function unsatSolve(problemID, numPreRefs, numRefs, adaptive)
     -- print("INT_S02a - Integral gradp*n (in):\t" .. time .. "\t" .. IntegrateNormalGradientOnManifold(disc.u, "p","Inflow", "Medium" ))
     -- print("INT_S02b - Integral gradp*n (out):\t" .. time .. "\t".. IntegrateNormalGradientOnManifold(disc.u, "p","Sea", "Medium" ))
 
-    -- print("INT_S03a - Integral gradc*n (in):\t" .. time .. "\t" .. IntegrateNormalGradientOnManifold(disc.u, "c","Inflow", "Medium" ))
-    -- print("INT_S03b - Integral gradc*n (out):\t" .. time .. "\t".. IntegrateNormalGradientOnManifold(disc.u, "c","Sea", "Medium" ))
-    -- print("INT_S04 - Integral gradp*n (out):\t" .. time .. "\t".. IntegrateNormalGradientOnManifold(disc.u, "p", "Rim", "Aquifer" ))
+    -- print("INT_S03a - Integral gradc*n (in):\t" .. time .. "\t" .. IntegrateNormalGradientOnManifold(disc.u, "c", "Inflow", "Medium" ))
+    -- print("INT_S03b - Integral gradc*n (out):\t" .. time .. "\t".. IntegrateNormalGradientOnManifold(disc.u, "c", "Sea", "Medium" ))
+    -- print("INT_S04 - Integral gradp*n (out):\t" .. time .. "\t"..  IntegrateNormalGradientOnManifold(disc.u, "p", "Rim", "Aquifer" ))
    
     print("")
     print(">>>> TimeStep: " .. step .. "," .. time .. "," .. currdt .. " <<<<")
@@ -328,6 +323,7 @@ function unsatSolve(problemID, numPreRefs, numRefs, adaptive)
       and FSFileMeasurer) then
     surfaceObserver = FSFileMeasurer(disc.u, "p", 0.0)
     surfaceObserver:enable_print_output()
+    surfaceObserver:enable_table_output("mytable")
     surfaceObserver:enable_step_file_output("phreatic_surface_height")
 
     saltInterfaceObserver = FSFileMeasurer(disc.u, "c", 0.5)
