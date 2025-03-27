@@ -7,6 +7,9 @@ rhog = (-1.0)*lens_rho*lens_g
 
 recharge_rate = util.GetParamNumber("--recharge", -0.8 / (24 * 3600))
 total_time = util.GetParamNumber("--hours", 24, "Total simulation time in hours")
+steady_state = 60*60*24 -- 12 hours to reach steady state
+pump_rate = -5e-3 -- 1.0 m^3/day
+sea_level = util.GetParamNumber("--sea_level", 0.27, "Sea level in m") -- 0.3 for fully saturated
 
 tstop = total_time * 60 * 60 -- 1 day
 
@@ -16,7 +19,7 @@ local lens =
   domain =
   {
     dim = 2,
-    grid = "grids/stoeckl_lens.ugx",
+    grid = "grids/stoeckl_lens_pump_full.ugx",
     numRefs = ARGS.numRefs,
     numPreRefs = ARGS.numPreRefs,
   },
@@ -43,7 +46,7 @@ local lens =
     { type = "const",         -- viscosity function ["const", "real"]
       mu0 = 1e-3              -- [ Pa s ]
     },
-    diffusion   = 1.0e-9, -- [ m^2/s ]
+    diffusion   = 10e-9, -- [ m^2/s ]
     upwind = "partial"
   },
   medium =
@@ -66,7 +69,7 @@ local lens =
 
  initial =
   {
-    { cmp = "c", value = 1.0 },
+    { cmp = "c", value = initial_c },
     { cmp = "p", value = "HydroPressure" },
   },
 
@@ -77,8 +80,8 @@ local lens =
     {cmp = "c", type = "dirichlet", bnd = "Top", value = "top_boundary_c"},
 
     -- Left
-    {cmp = "p", type = "dirichlet", bnd = "Left", value = "left_boundary"},
-    {cmp = "c", type = "dirichlet", bnd = "Left", value = 1.0},
+    {cmp = "p", type = "dirichlet", bnd = "Shore", value = "shore_boundary"},
+    {cmp = "c", type = "dirichlet", bnd = "Shore", value = "shore_boundary_c"},
   },
 
   linSolver =
@@ -127,8 +130,16 @@ local lens =
 
 T0 = 6*60*60 -- phase switch, after quasi steady state, 6h
 
+function initial_c{x, y, t, si}
+  if y < sea_level then
+    return 1.0
+  else
+    return 0.0
+  end
+end
+
 function HydroPressure(x, y)
-  return (y - 0.3) * lens_rho_c * lens_g
+  return (y - sea_level) * lens_rho_c * lens_g
 end
 
 function top_boundary(x, y, t, si)
@@ -149,8 +160,21 @@ function top_boundary_c(x, y, t, si)
 end
 
 
-function left_boundary(x, y, t, si)
-  return true, HydroPressure(x, y)
+function shore_boundary(x, y, t, si)
+  hp = HydroPressure(x, y)
+  if y > sea_level then
+    return false, 0.0 -- no flow above sea level
+  else
+    return true, hp
+  end
+end
+
+function shore_boundary_c(x, y, t, si)
+  if y > sea_level then
+    return false, 0.0
+  else
+    return true, 1.0
+  end
 end
 
 return lens

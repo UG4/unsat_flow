@@ -7,9 +7,11 @@ rhog = (-1.0)*lens_rho*lens_g
 
 recharge_rate = util.GetParamNumber("--recharge", -1.8e-5)
 total_time = util.GetParamNumber("--hours", 24, "Total simulation time in hours")
-steady_state = 60*60*12 -- 12 hours to reach steady state
 pump_rate = -5e-3 -- 1.0 m^3/day
 sea_level = util.GetParamNumber("--sea_level", 0.27, "Sea level in m") -- 0.3 for fully saturated
+pump_switch_on = util.GetParamNumber("--pump_switch_on", 6.0, "Time when pump is switched on (in hours)")
+steady_state = 60*60*pump_switch_on -- 12 hours to reach steady state
+
 
 tstop = total_time * 60 * 60
 
@@ -58,8 +60,7 @@ local lens =
     { uid = "@Material",
       type = "vanGenuchten",
       thetaS = 0.39, thetaR = 0.1,
-      alpha = 0.423/rhog, n = 2.06,
-      Ksat = 4.5e-3}
+      alpha = 0.423/rhog, n = 2.06}
   },
 
   flow =
@@ -73,7 +74,8 @@ local lens =
       max = lens_rho_c,           -- [ kg m^{-3} ] saltwater density
     },
     diffusion   = 10e-9, -- [ m^2/s ]
-    upwind = "partial"
+    upwind = "partial",
+    viscosity = 1e-3
   },
   medium =
   {
@@ -86,7 +88,8 @@ local lens =
          conductivity =
          { type  = "vanGenuchten",
            value   = "@Material",
-         }
+         },
+         permeability = 4.6e-10
      },
  },
 
@@ -107,10 +110,10 @@ local lens =
     {cmp = "c", type = "dirichlet", bnd = "Shore", value = "shore_boundary_c"},
   },
 
-  sources =
+  --[[sources =
   {
     {cmp = "p", strength = "pumping", subset = "Pump", coord = {0.9, 0.15}, substances = {{cmp = "c"}}},
-  },
+  },]]--
 
   linSolver =
   { type = "bicgstab",			-- linear solver type ["bicgstab", "cg", "linear"]
