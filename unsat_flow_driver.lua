@@ -52,9 +52,24 @@ function unsatSolve(problemID, numPreRefs, numRefs, adaptive)
 
   InitUG(problem.domain.dim, AlgebraType("CPU", 1))
 
-  local balancerType =  "bisection" -- "bisection" | "metis"
-  local dom = util.CreateAndDistributeDomain(problem.domain.grid, numRefs, numPreRefs, {}, balancerType)
+  local dom = nil
+  if (problem.loadBalancer) then
 
+    dom = util.CreateDomain(problem.domain.grid, numPreRefs, {})
+    local refiner = GlobalDomainRefiner(dom)
+    local loadBalancer = util.balancer.CreateLoadBalancer(dom, loadBalancerDesc)
+    
+    for i=numPreRefs, numRefs do
+      refiner:refine()
+      loadBalancer.rebalance()
+      loadBalancer:print_quality_records()
+    end
+  else
+    local balancerType =  "bisection" -- "bisection" | "metis"
+    dom = util.CreateAndDistributeDomain(problem.domain.grid, numRefs, numPreRefs, {}, balancerType) 
+  end
+
+ 
   -- saves the refined grid
   -- SaveGridHierarchyTransformed(dom:grid(), dom:subset_handler(), "refined.ugx", 0.1)
 

@@ -11,7 +11,7 @@ local myRadius = 100.0 --
 
 local myHeight = 10.0
 
-local myRechargeRate = 0.1/DAY -- m/day -- Recharge Rate
+local myRechargeRate = 0.01/DAY -- m/day -- Recharge Rate
 local myRechargeRadius = 12.5 -- 
 
 
@@ -24,7 +24,7 @@ local myRechargeVol = myRechargeArea*myRechargeRate -- cbm/s
 local myRechargeMass = myRechargeVol*rho0 -- kg/s
 
 
-local QStrength = 0.5 * myRechargeMass
+local QStrength = 0.0 * myRechargeMass
 
 local lens3D = 
 { 
@@ -272,6 +272,37 @@ local lens3D =
       return (-z0-z) * rhog1 -- z0 meters below ground level
     end
 
+  },
+
+  loadBalancer = {
+    partitioner = "dynamicBisection",
+  
+    hierarchy =
+    {
+      type						= "standard",
+      minElemsPerProcPerLevel		= 32,
+      maxRedistProcs				= 256,
+      qualityRedistLevelOffset	= 100,	-- 2 in adaptive case, 100 for non-adaptive
+  
+      {-- level 0
+        upperLvl = 0,
+        maxProcs = 1
+      },
+      
+      {-- levels 1 to 2
+   			upperLvl = 2,
+   			maxProcs = 128,
+  			-- maxRedistProcs 8
+   		},
+  
+      --[[
+      {-- we restrict distribution up to baseLvl, since smoothing on the
+      --	highest base lvl should also be performed on at most maxBaseProcs
+        upperLvl = baseLvl,
+        maxProcs = maxBaseProcs
+      }
+      --]]
+    }
   }
 }
 
