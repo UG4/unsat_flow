@@ -202,12 +202,18 @@ function unsatSolve(problemID, numPreRefs, numRefs, adaptive)
   local limexErrorEst = CompositeGridFunctionEstimator()
   local weightedMetricSpace = CompositeSpace()
 
-  if problem.time.metricSpace and type(problem.time.metricSpace)="table" then
+  print("LIMEX:")
+  if ((problem.time.metricSpace) and (type(problem.time.metricSpace)=="table")) then
     -- Problem specific.
+    print("LIMEX - metric space:")
+    print(problem.time.metricSpace)
     for i, ispace in ipairs(problem.time.metricSpace) do
-      print(i, v)
+      print(i, ispace)
       weightedMetricSpace:add(ispace)
     end
+
+    limexErrorEst:add(weightedMetricSpace)
+    limexErrorEst:use_strict_relative_norms(true)
   else
     -- Default config.
     -- Scale  with || (kappa_0/mu_0) * grad(p) || 

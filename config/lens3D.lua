@@ -1,70 +1,38 @@
-local rho0 = 1000 
-local rhog = 9.81 * 1000 -- approx: 1e+4
+local rho0 = 1000 -- kg/m^3
+local rhog = 9.81 * 1000 -- approx: 1e+4 -- kg/(m*s)
 local rhog1 = 9.81 *1020
-local z0 = 2.0 -- two meters below ground level.
+local z0 = 5.0 -- meters below ground level.
 local alpha = 1e+1
 local Ss = 0.25 -- 1/m
 
---[[
 
-Marc Walther, Dissertation TU Dresden, 2014:
-Variable-Density Flow Processes in Porous Media On Small, Medium and Regional Scales
-https://nbn-resolving.org/urn:nbn:de:bsz:14-qucosa-153365
+local DAY = 3600*24 -- seconds
+local myRadius = 100.0 -- 
 
-Walther:
-T = 8 *   1e-5   * m^2/s
-S = 0.2 * 8      * 1/m * m 
+local myHeight = 10.0
 
-=> S/T = 2.0 * 1e+4   s / (m*m)
-
-
-Saturated intrinsic permeability
-  $\kappa = 7.6453E-13 m^2$ 
-transmissivity  T = K*d, K= kappa*rho*g/mu, K_approx = kappa * 1e+7
-  $T = 7.5E-05 m^2/s$; -- 7.5* 1e-6 * 10 m: (check)
-porosity:
-  $\phi = 0.2$; 
-specific storage:
-  $ S_s = 1.0E-03$ -- 1/m => S_s*b = 0.01
-  $ S_y = 0.2
-  (rho0 *  \gamma) * dp/dt =  drho/dt
-      gamma   = S_s / (b \phi g \rho_0}$
-  where $\gamma = 5.0968E-08 s^2/m/kg$
-  => rho0*gamma  \approx 5E-5 s^2/m^4 
-  => d(phi*S*rho)/dt \approx (phi*Smax)*drho/dt
-
-
-cf. https://en.wikipedia.org/wiki/Specific_storage
-
-S = dV/dh * 1/A = S_s*b + S_y
-
-confined:   S = S_s *b
-unconfined: S = S_y
-
-h     : hydraulic head, p = (rho_0 * g) * h
-b     : aquifer thickness (here: 8 m )
-S_s   : specific storage
-S_y   : is the specific yield
-A     : area
-
---]]
-DAY = 3600*24 -- seconds
-QStrength = 0.125*rho0*20.0/DAY  -- corresponds to 1/8 of 20 m^3/d
-myRadius = 100.0
-myHeight = 10.0
-
-mySectorArea = (2.0*math.pi*myRadius)*myHeight
-mySectorVol = (math.pi*myRadius*myRadius)*myHeight
+local myRechargeRate = 0.1/DAY -- m/day -- Recharge Rate
+local myRechargeRadius = 12.5 -- 
 
 
 
-local well3D = 
+
+
+local mySectorArea = (4.0/3.0*math.pi*myRadius*myRadius)*0.125
+local myRechargeArea = (4.0/3.0*math.pi*myRechargeRadius*myRechargeRadius)*0.125  -- m^2
+local myRechargeVol = myRechargeArea*myRechargeRate -- cbm/s
+local myRechargeMass = myRechargeVol*rho0 -- kg/s
+
+
+local QStrength = 0.5 * myRechargeMass
+
+local lens3D = 
 { 
   -- The domain specific setup
   domain = 
   {
     dim = 3,
-    grid = "grids/lens3D.ugx",
+    grid = "grids/lens3D_d20.ugx",
     numRefs = ARGS.numRefs,
     numPreRefs = ARGS.numPreRefs,
     -- neededSubsets = {}
@@ -172,9 +140,9 @@ local well3D =
   sources =
   {
     
-     --[[ 
+     -- [[ 
      { 
-        cmp = "p", subset = "Sink", coord = {0.0, 0.0, -10.0}, 
+        cmp = "p", subset = "Sink", coord = {0.0, 0.0, -20.0}, 
         strength = -QStrength, 
         substances = 
         { 
@@ -233,7 +201,7 @@ local well3D =
               postSmooth 	= 3,		-- number postsmoothing steps
               rap			= true,		-- comutes RAP-product instead of assembling if true 
               baseLevel	= 0, -- gmg - baselevel
-              baseSolver=LU()
+              baseSolver=SuperLUCPU1()
               
           },
      
@@ -261,12 +229,18 @@ local well3D =
       max_time_steps = 100000,		-- [1]	maximum number of time steps
       dt		= 1e-0*ARGS.dt*DAY,		-- [s]  initial time step
       dtmin	= 1e-14 * ARGS.dt*DAY,	-- [s]  minimal time step
-      dtmax	= 120.0*DAY,	-- [s]  maximal time step
+      dtmax	= 360.0*DAY,	-- [s]  maximal time step
       dtred	= 0.1,				-- [1]  reduction factor for time step
       tol 	= 1e-3,
+
+      metricSpace = {
+        H1SemiComponentSpace3dCPU1("c", 2),
+        L2ComponentSpace3dCPU1("p", 2)
+      },
+
       
       -- Idea: new items (JSON reference):
-      post_process = { ["$ref"] = "./well3D.lua#/TheisToolbox/PostProcess" } -- JSON-like reference to LUA function.
+      post_process = { ["$ref"] = "./lens3D.lua#/TheisToolbox/PostProcess" } -- JSON-like reference to LUA function.
   },
   
   
@@ -278,7 +252,7 @@ local well3D =
   {
     freq	= 1, 	-- prints every x timesteps
     binary 	= true,	-- format for vtk file	
-    file = "simulations/well3D",
+    file = "simulations/lens3D",
     data = {"c", "p", "q", "s", "kr", "rho"},
       
     fs_evaluation_points = { 
@@ -330,14 +304,14 @@ end
 
 function Lens_3D_Top_BC_P(x, y, z, t, si) 
   local r2=x*x+y*y
-  if r2<=12.5*12.5 then return -5e-6
+  if (r2<=myRechargeRadius*myRechargeRadius) then return -1.0*myRechargeRate*rho0  -- recharge in m/s
   else return 0
   end
 end
 
 function Lens_3D_Top_BC_C(x, y, z, t, si) 
   local r2=x*x+y*y
-  --if r2<=12.5*12.5 then 
+  --if (r2<=myRechargeRadius*myRechargeRadius) then 
     return true, 0.0 -- z0 meters below ground level
   --else return false, 0.0
   --end   
@@ -345,18 +319,22 @@ end
  
 
 print("==============================================================")
-print("V="..0.125*mySectorVol)
+-- print("V="..0.125*mySectorVol)
 print("Q="..QStrength)
 
-local myMedium = well3D.medium[1]
+local myMedium = lens3D.medium[1]
 
 local myStorativity = Ss*(10-z0)
 print("Storativity (S)    [1]      =\t\t"..myStorativity)
 
-local myConductivity = (myMedium.permeability/ well3D.flow.viscosity.mu0)* rhog
+local myConductivity = (myMedium.permeability/ lens3D.flow.viscosity.mu0)* rhog
 local myTransmissivity =  myConductivity*(10-z0)
 print("Transmissivity (T) [m*m/s]  =\t\t" .. myTransmissivity)
 print("Conductivity (Kf)  [m/s]    =\t\t" .. myConductivity)
+print("Recharge Rate (R)  [m/s]    =\t\t" .. myRechargeRate)
+print("Ratio (R/Kf)       [1]      =\t\t" .. myRechargeRate/myConductivity)
+
+
 
 --myStorativity = myMedium.mass_storage.value * rhog
 --print("Storativity (S2)   =\t\t"..myStorativity)
@@ -431,7 +409,7 @@ end
 -- Evaluate Theis' well solution (for a given set of points).
 TheisToolbox.post_process = function (points, step, time, currdt)
 
-  -- local points = well3D.output.fs_evaluation_points
+  -- local points = lens3D.output.fs_evaluation_points
   -- print(points) -- DEBUG: print evaluation points
   print("-------- Theis (t="..time..")---------")
   local dd ={}
@@ -452,18 +430,16 @@ end
 -- print(TheisToolbox)
 
 -- Define PostProcess (TODO: functions break JSON compatibility...)
-well3D.PostProcess = function (step, time, currdt) 
+lens3D.PostProcess = function (step, time, currdt) 
 
   -- Evaluate reference
-  TheisToolbox.post_process(well3D.output.fs_evaluation_points, step, time, currdt)
+  TheisToolbox.post_process(lens3D.output.fs_evaluation_points, step, time, currdt)
+
+
 end
 
 print("==============================================================")
--- Some tests...
-print(theis_well_function(0.1, 20))
-print(theis_well_function(2.0, 20))
-print(theis_well_function(20.0, 20))
-print(theis_well_function(100.0, 20))
 
-return well3D
+
+return lens3D
 
